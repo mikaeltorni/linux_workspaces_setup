@@ -1,0 +1,8 @@
+{
+  "uuid": "monitor-window-hotkeys@local",
+  "name": "Monitor Window Hotkeys",
+  "description": "Move the focused window to a numbered monitor, pointer-drag, resize, and tile it with local hotkeys",
+  "settings-schema": "org.gnome.shell.extensions.monitor-window-hotkeys",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "version": 8
+}

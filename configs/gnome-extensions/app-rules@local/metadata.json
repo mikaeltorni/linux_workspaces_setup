@@ -1,0 +1,7 @@
+{
+  "uuid": "app-rules@local",
+  "name": "App Window Rules",
+  "description": "Assign workspaces/sticky windows for specific apps",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "version": 2
+}

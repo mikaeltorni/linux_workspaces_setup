@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.monitor-window-hotkeys" path="/org/gnome/shell/extensions/monitor-window-hotkeys/">
+    <key name="move-active-window-to-monitor-1" type="as">
+      <default>['&lt;Alt&gt;&lt;Super&gt;X']</default>
+      <summary>Move focused window to monitor 1</summary>
+    </key>
+    <key name="move-active-window-to-monitor-2" type="as">
+      <default>['&lt;Alt&gt;&lt;Super&gt;Z']</default>
+      <summary>Move focused window to monitor 2</summary>
+    </key>
+    <key name="move-active-window-to-monitor-3" type="as">
+      <default>['&lt;Alt&gt;&lt;Super&gt;C']</default>
+      <summary>Move focused window to monitor 3</summary>
+    </key>
+    <key name="move-active-window-to-monitor-4" type="as">
+      <default>[]</default>
+      <summary>Move focused window to monitor 4</summary>
+    </key>
+    <key name="move-active-window-to-monitor-5" type="as">
+      <default>[]</default>
+      <summary>Move focused window to monitor 5</summary>
+    </key>
+    <key name="move-active-window-to-monitor-6" type="as">
+      <default>[]</default>
+      <summary>Move focused window to monitor 6</summary>
+    </key>
+    <key name="move-active-window-to-monitor-7" type="as">
+      <default>[]</default>
+      <summary>Legacy disabled monitor 7 binding</summary>
+    </key>
+    <key name="move-active-window-to-monitor-8" type="as">
+      <default>[]</default>
+      <summary>Legacy disabled monitor 8 binding</summary>
+    </key>
+    <key name="tile-top-half" type="as">
+      <default>['&lt;Super&gt;Up', '&lt;Control&gt;&lt;Super&gt;X']</default>
+      <summary>Tile focused window to the top half of its monitor</summary>
+    </key>
+    <key name="tile-bottom-half" type="as">
+      <default>['&lt;Control&gt;&lt;Super&gt;W', '&lt;Super&gt;Down']</default>
+      <summary>Tile focused window to the bottom half of its monitor</summary>
+    </key>
+    <key name="tile-left-half" type="as">
+      <default>['&lt;Control&gt;&lt;Super&gt;C', '&lt;Super&gt;Left']</default>
+      <summary>Tile focused window to the left half of its monitor</summary>
+    </key>
+    <key name="tile-active-window-right-half" type="as">
+      <default>['&lt;Control&gt;&lt;Super&gt;Right']</default>
+      <summary>Tile focused window to the right half of its monitor</summary>
+    </key>
+    <key name="resize-active-window-left-out" type="as">
+      <default>['&lt;Control&gt;&lt;Alt&gt;&lt;Super&gt;Q']</default>
+      <summary>Move the focused window's left edge left</summary>
+    </key>
+    <key name="resize-active-window-left-in" type="as">
+      <default>['&lt;Alt&gt;&lt;Super&gt;Q', '&lt;Control&gt;&lt;Alt&gt;&lt;Shift&gt;&lt;Super&gt;Q']</default>
+      <summary>Move the focused window's left edge right</summary>
+    </key>
+    <key name="resize-active-window-right-out" type="as">
+      <default>['&lt;Control&gt;&lt;Alt&gt;&lt;Super&gt;T']</default>
+      <summary>Move the focused window's right edge right</summary>
+    </key>
+    <key name="resize-active-window-right-in" type="as">
+      <default>['&lt;Alt&gt;&lt;Super&gt;T', '&lt;Control&gt;&lt;Alt&gt;&lt;Shift&gt;&lt;Super&gt;T']</default>
+      <summary>Move the focused window's right edge left</summary>
+    </key>
+    <key name="resize-active-window-up-out" type="as">
+      <default>['&lt;Control&gt;&lt;Alt&gt;&lt;Super&gt;A']</default>
+      <summary>Move the focused window's top edge up</summary>
+    </key>
+    <key name="resize-active-window-up-in" type="as">
+      <default>['&lt;Alt&gt;&lt;Super&gt;A', '&lt;Control&gt;&lt;Alt&gt;&lt;Shift&gt;&lt;Super&gt;A']</default>
+      <summary>Move the focused window's top edge down</summary>
+    </key>
+    <key name="resize-active-window-down-out" type="as">
+      <default>['&lt;Control&gt;&lt;Alt&gt;&lt;Super&gt;R']</default>
+      <summary>Move the focused window's bottom edge down</summary>
+    </key>
+    <key name="resize-active-window-down-in" type="as">
+      <default>['&lt;Alt&gt;&lt;Super&gt;R', '&lt;Control&gt;&lt;Alt&gt;&lt;Shift&gt;&lt;Super&gt;R']</default>
+      <summary>Move the focused window's bottom edge up</summary>
+    </key>
+    <key name="nudge-active-window-up" type="as">
+      <default>[]</default>
+      <summary>Legacy disabled focused window up nudge</summary>
+    </key>
+    <key name="nudge-active-window-left" type="as">
+      <default>[]</default>
+      <summary>Legacy disabled focused window left nudge</summary>
+    </key>
+    <key name="nudge-active-window-right" type="as">
+      <default>[]</default>
+      <summary>Legacy disabled focused window right nudge</summary>
+    </key>
+    <key name="nudge-active-window-down" type="as">
+      <default>[]</default>
+      <summary>Legacy disabled focused window down nudge</summary>
+    </key>
+    <key name="drag-active-window-with-pointer" type="as">
+      <default>['&lt;Alt&gt;&lt;Super&gt;W']</default>
+      <summary>Move the focused window by pointer movement while held</summary>
+    </key>
+  </schema>
+</schemalist>
