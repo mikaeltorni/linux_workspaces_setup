@@ -1,0 +1,18 @@
+# linux-workspaces-setup per-user hotkey configuration.
+# Edit $HOME/.config/linux-workspaces-setup/workspace-bindings.conf before running install.sh.
+# Format: INDEX:ACCELERATOR entries separated by |.
+
+WORKSPACE_SWITCH_BINDINGS='1:<Super>Z|2:<Super>X|3:<Super>C|4:<Super>A|5:<Super>Q|6:<Super>W|7:<Super>E|8:<Super>R'
+WORKSPACE_MOVE_BINDINGS='1:<Super><Shift>Z|2:<Super><Shift>X|3:<Super><Shift>C|4:<Super><Shift>A|5:<Super><Shift>Q|6:<Super><Shift>W|7:<Super><Shift>E|8:<Super><Shift>R'
+SUPER_ARROW_MOVE_BINDINGS='move-to-workspace-left:<Super><Shift>Left|move-to-workspace-right:<Super><Shift>Right|move-to-workspace-down:<Super><Shift>Down|move-to-workspace-up:<Super><Shift>Up'
+
+# Leave screen recording empty by default so it cannot shadow Super+R.
+SCREENSHOT_UI_BINDINGS='<Shift><Super>s'
+SCREENSHOT_QUICK_BINDINGS='Print'
+OVERVIEW_BINDINGS='<Super>Tab'
+APP_VIEWER_BINDINGS=''
+QUICK_SETTINGS_BINDINGS=''
+
+WORKSPACE_COUNT=8
+# If 0, leave GNOME's unused workspace switch/move keys alone instead of clearing them.
+WORKSPACE_CLEAR_UNUSED_BINDINGS=1

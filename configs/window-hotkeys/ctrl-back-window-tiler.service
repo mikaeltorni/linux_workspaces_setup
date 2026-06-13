@@ -1,0 +1,13 @@
+[Unit]
+Description=Ctrl + browser-back window right-half tiler
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/ctrl_back_tile_right.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

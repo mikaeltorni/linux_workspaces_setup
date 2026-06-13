@@ -62,14 +62,21 @@ For third-party extension bindings, remove duplicates from that extension's own 
 
 ```bash
 python3 -m py_compile configs/window-hotkeys/ctrl_back_tile_right.py \
-  configs/window-hotkeys/input_device_paths.py
+  configs/window-hotkeys/ctrl_back_event_state.py \
+  configs/window-hotkeys/input_device_paths.py \
+  configs/window-hotkeys/tile_right_client.py
 bash -n install.sh lib/workspace_setup.sh configs/gnome-shell/extensions/monitor-window-hotkeys@local/apply-system-bindings.sh
 python3 -m pytest tests
 ```
 
-The Ctrl+Back service implementation is split between
-`ctrl_back_tile_right.py`, which owns event handling and GNOME integration,
-and `input_device_paths.py`, which owns deterministic input-device ordering.
+The Ctrl+Back service implementation is split across:
+
+- `ctrl_back_tile_right.py`, which owns evdev resources and GNOME integration;
+- `ctrl_back_event_state.py`, which owns Ctrl/Back state transitions and
+  forwarding/suppression decisions;
+- `tile_right_client.py`, which owns the D-Bus call into the GNOME Shell
+  extension's right-half tiling API; and
+- `input_device_paths.py`, which owns deterministic input-device ordering.
 
 ## Deployment notes
 
