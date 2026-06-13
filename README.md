@@ -1,3 +1,80 @@
+# Linux Workspaces Setup
+
+Ubuntu GNOME workspace behavior, numbered-workspace hotkeys, and monitor/window tiling shortcuts are owned by this repository. The old `linux_hotkey_setup` repository no longer owns these items; run this installer from the master setup chain or directly after cloning its sibling repos.
+
+## Ownership map
+
+- From `linux_hotkey_setup`: workspace switch/move keybindings, screenshot/Albert bindings, monitor/window hotkeys extension, numbered workspace popup, Ctrl+Back window tiler service, and xmousepasteblock clipboard-lock wiring.
+- From `linux_configuration_setup`: app-rules GNOME Shell extension that assigns apps to workspaces or sticky windows.
+- From `ubuntu_2404_taskbar_system_status_monitor`: Window Rules/Workspace rules behavior and Auto-move-windows workspace placement configuration. The Ubuntu taskbar repository keeps the resource monitor/taskbar UI pieces only.
+- Kept separate but invoked by this repo: automatic same-application window tiling in `linux_automatic_window_tiling`.
+
+## Default hotkeys
+
+The installer configures 8 workspaces by default. Workspace switch keys are cleared first, then filled from the configured map; unset workspace entries become empty bindings unless `WORKSPACE_CLEAR_UNUSED_BINDINGS=0` is set.
+
+| Work | Switch | Move to |
+|---|---|---|
+| 1 | `<Super>Z` | `<Super><Shift>Z` |
+| 2 | `<Super>X` | `<Super><Shift>X` |
+| 3 | `<Super>C` | `<Super><Shift>C` |
+| 4 | `<Super>A` | `<Super><Shift>A` |
+| 5 | `<Super>Q` | `<Super><Shift>Q` |
+| 6 | `<Super>W` | `<Super><Shift>W` |
+| 7 | `<Super>E` | `<Super><Shift>E` |
+| 8 | `<Super>R` | `<Super><Shift>R` |
+
+These defaults intentionally avoid Ubuntu/GNOME Tiling Assistant half-screen tiling shortcuts such as Super+Up/Down and Ctrl+Super+W/X/C. Known GNOME/Tiling Assistant conflicts are cleared during setup, including duplicate half-tile bindings that can steal Super+Up/Down or left/right tiling.
+
+## Configure your own hotkeys
+
+Edit `$HOME/.config/linux-workspaces-setup/workspace-bindings.conf` before running the installer:
+
+```bash
+mkdir -p "$HOME/.config/linux-workspaces-setup"
+cp /home/mk/projects/linux_workspaces_setup/configs/workspace-bindings.conf.example \
+  "$HOME/.config/linux-workspaces-setup/workspace-bindings.conf"
+# Edit only the WORKSPACE_*_BINDINGS lines.
+sudo bash /home/mk/projects/linux_workspaces_setup/install.sh
+```
+
+The config format is `INDEX:ACCELERATOR` entries separated by `|`:
+
+```bash
+WORKSPACE_SWITCH_BINDINGS='1:<Super>Z|2:<Super>X'
+WORKSPACE_MOVE_BINDINGS='1:<Super><Shift>z|2:<Super><Shift>x'
+SUPER_ARROW_MOVE_BINDINGS='move-to-workspace-left:<Super><Shift>Left'
+OVERVIEW_BINDINGS='<Super>F9'
+```
+
+If you omit an index up to `WORKSPACE_COUNT`, that workspace's switch/move keys remain empty. If a selected accelerator is still used by Ubuntu/GNOME/Tiling Assistant, run the explicit cleanup command as the target user:
+
+```bash
+env DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus" DISPLAY="${DISPLAY:-:0}" \
+  gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-1 ''
+gsettings --schemadir "$HOME/.local/share/gnome-shell/extensions/monitor-window-hotkeys@local/schemas" \
+  reset-recursively org.gnome.shell.extensions.monitor-window-hotkeys
+```
+
+For third-party extension bindings, remove duplicates from that extension's own schema after the installer reports or logs a conflict. GNOME Shell extensions require a logout/login to load newly copied shell-extension files. The installer enables extensions without replacing `gnome-shell` and preserves your existing enabled-extension list.
+
+## Run tests
+
+```bash
+python3 -m py_compile configs/window-hotkeys/ctrl_back_tile_right.py \
+  configs/window-hotkeys/input_device_paths.py
+bash -n install.sh lib/workspace_setup.sh configs/gnome-shell/extensions/monitor-window-hotkeys@local/apply-system-bindings.sh
+python3 -m pytest tests
+```
+
+The Ctrl+Back service implementation is split between
+`ctrl_back_tile_right.py`, which owns event handling and GNOME integration,
+and `input_device_paths.py`, which owns deterministic input-device ordering.
+
+## Deployment notes
+
+Run `sudo bash install.sh` once from the master chain after all sibling repos have been cloned. For standalone runs, keep `../linux_automatic_window_tiling` nearby because this repo delegates automatic tiling activation to that installer with `<Super>t`. If you only need GNOME GSettings changes on an existing desktop session, run as the target user; root is needed for optional apt/package steps and Wayland shell-extension installation.
+
 ## Disclaimer
 
 This software is provided under the MIT License on an **“as is”** basis, without warranties of any kind. To the maximum extent permitted by applicable law, the authors and copyright holders shall not be liable for any claims, damages, losses, or other liability arising from the use of this software.
