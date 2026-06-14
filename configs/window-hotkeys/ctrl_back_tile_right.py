@@ -59,8 +59,6 @@ class CtrlBackWindowTiler:
     def __init__(self) -> None:
         self.devices: list[WatchedDevice] = []
         self.event_state = CtrlBackEventState()
-        self.ctrl_pressed = self.event_state.ctrl_pressed
-        self.suppressed = self.event_state.suppressed
         self.forward_capabilities: dict[int, set[int]] = {}
         self.ui: UInput | None = None
         self.running = True
