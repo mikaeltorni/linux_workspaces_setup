@@ -25,14 +25,6 @@
       <default>[]</default>
       <summary>Move focused window to monitor 6</summary>
     </key>
-    <key name="move-active-window-to-monitor-7" type="as">
-      <default>[]</default>
-      <summary>Legacy disabled monitor 7 binding</summary>
-    </key>
-    <key name="move-active-window-to-monitor-8" type="as">
-      <default>[]</default>
-      <summary>Legacy disabled monitor 8 binding</summary>
-    </key>
     <key name="tile-top-half" type="as">
       <default>['&lt;Super&gt;Up', '&lt;Control&gt;&lt;Super&gt;X']</default>
       <summary>Tile focused window to the top half of its monitor</summary>
@@ -80,22 +72,6 @@
     <key name="resize-active-window-down-in" type="as">
       <default>['&lt;Alt&gt;&lt;Super&gt;R', '&lt;Control&gt;&lt;Alt&gt;&lt;Shift&gt;&lt;Super&gt;R']</default>
       <summary>Move the focused window's bottom edge up</summary>
-    </key>
-    <key name="nudge-active-window-up" type="as">
-      <default>[]</default>
-      <summary>Legacy disabled focused window up nudge</summary>
-    </key>
-    <key name="nudge-active-window-left" type="as">
-      <default>[]</default>
-      <summary>Legacy disabled focused window left nudge</summary>
-    </key>
-    <key name="nudge-active-window-right" type="as">
-      <default>[]</default>
-      <summary>Legacy disabled focused window right nudge</summary>
-    </key>
-    <key name="nudge-active-window-down" type="as">
-      <default>[]</default>
-      <summary>Legacy disabled focused window down nudge</summary>
     </key>
     <key name="drag-active-window-with-pointer" type="as">
       <default>['&lt;Alt&gt;&lt;Super&gt;W']</default>
