@@ -77,5 +77,45 @@
       <default>['&lt;Alt&gt;&lt;Super&gt;W']</default>
       <summary>Move the focused window by pointer movement while held</summary>
     </key>
+    <key name="send-window-to-workspace-mode" type="as">
+      <default>['&lt;Super&gt;U']</default>
+      <summary>Hold to send right-clicked windows to a held numbered workspace key</summary>
+    </key>
+    <key name="send-mode-workspace-bindings" type="as">
+      <default>['1:&lt;Super&gt;Z', '2:&lt;Super&gt;X', '3:&lt;Super&gt;C', '4:&lt;Super&gt;A', '5:&lt;Super&gt;Q', '6:&lt;Super&gt;W', '7:&lt;Super&gt;E', '8:&lt;Super&gt;R']</default>
+      <summary>Workspace key map used while send-window-to-workspace-mode is held</summary>
+    </key>
+    <key name="send-active-window-to-workspace-1" type="as">
+      <default>['&lt;Control&gt;&lt;Shift&gt;&lt;Super&gt;Z']</default>
+      <summary>Move focused window to workspace 1 without switching to it</summary>
+    </key>
+    <key name="send-active-window-to-workspace-2" type="as">
+      <default>['&lt;Control&gt;&lt;Shift&gt;&lt;Super&gt;X']</default>
+      <summary>Move focused window to workspace 2 without switching to it</summary>
+    </key>
+    <key name="send-active-window-to-workspace-3" type="as">
+      <default>['&lt;Control&gt;&lt;Shift&gt;&lt;Super&gt;C']</default>
+      <summary>Move focused window to workspace 3 without switching to it</summary>
+    </key>
+    <key name="send-active-window-to-workspace-4" type="as">
+      <default>['&lt;Control&gt;&lt;Shift&gt;&lt;Super&gt;A']</default>
+      <summary>Move focused window to workspace 4 without switching to it</summary>
+    </key>
+    <key name="send-active-window-to-workspace-5" type="as">
+      <default>['&lt;Control&gt;&lt;Shift&gt;&lt;Super&gt;Q']</default>
+      <summary>Move focused window to workspace 5 without switching to it</summary>
+    </key>
+    <key name="send-active-window-to-workspace-6" type="as">
+      <default>['&lt;Control&gt;&lt;Shift&gt;&lt;Super&gt;W']</default>
+      <summary>Move focused window to workspace 6 without switching to it</summary>
+    </key>
+    <key name="send-active-window-to-workspace-7" type="as">
+      <default>['&lt;Control&gt;&lt;Shift&gt;&lt;Super&gt;E']</default>
+      <summary>Move focused window to workspace 7 without switching to it</summary>
+    </key>
+    <key name="send-active-window-to-workspace-8" type="as">
+      <default>['&lt;Control&gt;&lt;Shift&gt;&lt;Super&gt;R']</default>
+      <summary>Move focused window to workspace 8 without switching to it</summary>
+    </key>
   </schema>
 </schemalist>

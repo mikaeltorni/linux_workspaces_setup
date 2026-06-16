@@ -105,6 +105,51 @@ configure_workspace_keys >/dev/null 2>&1
         assert "<Super>Up" not in tile_max_lines[0]
 
 
+def test_workspace_send_extension_bindings_are_derived_from_workspace_config():
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td) / "home"
+        bin_dir = Path(td) / "bin"
+        log_path = Path(td) / "gsettings.log"
+        home.mkdir()
+        bin_dir.mkdir()
+
+        fake_gsettings = bin_dir / "gsettings"
+        fake_gsettings.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' \"$*\" >> {str(log_path)!r}\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        fake_gsettings.chmod(0o755)
+
+        env = os.environ.copy()
+        env.update(
+            {
+                "PATH": f"{bin_dir}:{env.get('PATH', '')}",
+                "TARGET_USER": os.environ["USER"],
+                "TARGET_HOME": str(home),
+                "CONFIG_DIR": str(ROOT_DIR / "configs"),
+                "WORKSPACE_SWITCH_BINDINGS": "1:<Super>Z|2:<Super>X",
+                "WORKSPACE_MOVE_BINDINGS": "1:<Super><Shift>Z|2:<Super><Shift>X",
+            }
+        )
+
+        proc = run_bash(
+            """
+set -euo pipefail
+source lib/workspace_setup.sh
+configure_workspace_send_extension_bindings >/dev/null 2>&1
+""",
+            env=env,
+        )
+        assert proc.returncode == 0, proc.stderr
+
+        log_text = log_path.read_text(encoding="utf-8")
+        assert "send-mode-workspace-bindings ['1:<Super>Z', '2:<Super>X']" in log_text
+        assert "send-active-window-to-workspace-1 ['<Control><Super><Shift>Z']" in log_text
+        assert "send-active-window-to-workspace-2 ['<Control><Super><Shift>X']" in log_text
+
+
 def test_workspace_assets_and_delegation_are_present():
     assert (ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/extension.js").is_file()
     assert (ROOT_DIR / "configs/window-hotkeys/ctrl_back_tile_right.py").is_file()
@@ -113,6 +158,11 @@ def test_workspace_assets_and_delegation_are_present():
     setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
     assert "AUTOMATIC_WINDOW_TILING_BINDING:-<Super>t" in setup
     assert 'bash "$installer" "$AUTOMATIC_WINDOW_TILING_BINDING"' in setup
+    extension = (
+        ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/extension.js"
+    ).read_text(encoding="utf-8")
+    assert "send-window-to-workspace-mode" in extension
+    assert "send-active-window-to-workspace-8" in extension
 
 
 if __name__ == "__main__":

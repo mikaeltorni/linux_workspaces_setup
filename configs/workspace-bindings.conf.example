@@ -1,6 +1,8 @@
 # linux-workspaces-setup per-user hotkey configuration.
 # Edit $HOME/.config/linux-workspaces-setup/workspace-bindings.conf before running install.sh.
 # Format: INDEX:ACCELERATOR entries separated by |.
+# Ctrl+Super+Shift no-switch move bindings and Super+U right-click send-mode
+# targets are derived from these same maps by the GNOME Shell extension.
 
 WORKSPACE_SWITCH_BINDINGS='1:<Super>Z|2:<Super>X|3:<Super>C|4:<Super>A|5:<Super>Q|6:<Super>W|7:<Super>E|8:<Super>R'
 WORKSPACE_MOVE_BINDINGS='1:<Super><Shift>Z|2:<Super><Shift>X|3:<Super><Shift>C|4:<Super><Shift>A|5:<Super><Shift>Q|6:<Super><Shift>W|7:<Super><Shift>E|8:<Super><Shift>R'

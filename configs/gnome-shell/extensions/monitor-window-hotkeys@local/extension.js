@@ -48,6 +48,18 @@ const RESIZE_KEYBINDINGS = [
 ];
 
 const POINTER_DRAG_KEY = 'drag-active-window-with-pointer';
+const WORKSPACE_SEND_MODE_KEY = 'send-window-to-workspace-mode';
+const WORKSPACE_SEND_MODE_BINDINGS_KEY = 'send-mode-workspace-bindings';
+const WORKSPACE_SEND_KEYBINDINGS = [
+  { name: 'send-active-window-to-workspace-1', workspace: 0 },
+  { name: 'send-active-window-to-workspace-2', workspace: 1 },
+  { name: 'send-active-window-to-workspace-3', workspace: 2 },
+  { name: 'send-active-window-to-workspace-4', workspace: 3 },
+  { name: 'send-active-window-to-workspace-5', workspace: 4 },
+  { name: 'send-active-window-to-workspace-6', workspace: 5 },
+  { name: 'send-active-window-to-workspace-7', workspace: 6 },
+  { name: 'send-active-window-to-workspace-8', workspace: 7 },
+];
 const DBUS_BUS_NAME = 'org.gnome.shell.extensions.MonitorWindowHotkeys';
 const DBUS_OBJECT_PATH = '/org/gnome/shell/extensions/monitor_window_hotkeys';
 
@@ -78,15 +90,25 @@ const DBUS_INTERFACE_XML = `
  */
 function getFocusWindow() {
   const win = global.display.focus_window;
-  const skipTaskbar = typeof win?.is_skip_taskbar === 'function'
-    ? win.is_skip_taskbar()
-    : win?.skip_taskbar;
-
-  if (!win || skipTaskbar) {
+  if (!isUserWindow(win)) {
     return null;
   }
 
   return win;
+}
+
+/**
+ * Report whether a Meta.Window is a normal user-manageable application window.
+ *
+ * @param {Meta.Window|null} win Candidate window.
+ * @returns {boolean} True when hotkeys should be allowed to act on it.
+ */
+function isUserWindow(win) {
+  const skipTaskbar = typeof win?.is_skip_taskbar === 'function'
+    ? win.is_skip_taskbar()
+    : win?.skip_taskbar;
+
+  return Boolean(win && !skipTaskbar);
 }
 
 /**
@@ -114,6 +136,45 @@ function moveFocusedWindowToMonitor(monitorIndex) {
   }
 
   win.move_to_monitor(monitorIndex);
+}
+
+/**
+ * Move a window to a workspace without activating that destination workspace.
+ *
+ * @param {Meta.Window|null} win Window to move.
+ * @param {number} workspaceIndex Zero-based destination workspace index.
+ * @returns {void}
+ */
+function moveWindowToWorkspace(win, workspaceIndex) {
+  if (!isUserWindow(win)) {
+    return;
+  }
+
+  const workspaceManager = global.workspace_manager;
+  if (workspaceIndex < 0 || workspaceIndex >= workspaceManager.n_workspaces) {
+    return;
+  }
+
+  const workspace = workspaceManager.get_workspace_by_index(workspaceIndex);
+  if (!workspace || typeof win.change_workspace !== 'function') {
+    return;
+  }
+
+  try {
+    win.change_workspace(workspace);
+  } catch (error) {
+    console.error(`monitor-window-hotkeys: failed to send window to workspace ${workspaceIndex + 1}: ${error}`);
+  }
+}
+
+/**
+ * Move the focused window to a workspace without switching there.
+ *
+ * @param {number} workspaceIndex Zero-based destination workspace index.
+ * @returns {void}
+ */
+function sendFocusedWindowToWorkspace(workspaceIndex) {
+  moveWindowToWorkspace(getFocusWindow(), workspaceIndex);
 }
 
 /**
@@ -316,6 +377,161 @@ function pointerDragReleaseEvent(event) {
 
   const button = event.get_button();
   return button === 1;
+}
+
+/**
+ * Normalize a Clutter key symbol to a lower-case key name.
+ *
+ * @param {number} keySymbol Clutter key symbol.
+ * @returns {string} Normalized key name, or an empty string.
+ */
+function normalizeKeySymbol(keySymbol) {
+  if (!keySymbol || typeof Clutter.keyval_name !== 'function') {
+    return '';
+  }
+
+  return (Clutter.keyval_name(keySymbol) || '').toLowerCase();
+}
+
+/**
+ * Extract the non-modifier key name from a GNOME accelerator string.
+ *
+ * @param {string} accelerator Accelerator such as '<Super>Z'.
+ * @returns {string} Normalized key name, or an empty string.
+ */
+function acceleratorKeyName(accelerator) {
+  return String(accelerator || '').replace(/<[^>]+>/g, '').trim().toLowerCase();
+}
+
+/**
+ * Build the hold-mode workspace target map from extension settings.
+ *
+ * @param {Gio.Settings} settings Extension settings.
+ * @returns {Map<string, number>} Normalized key name to zero-based workspace.
+ */
+function getWorkspaceSendModeTargetMap(settings) {
+  const targetMap = new Map();
+  for (const entry of settings.get_strv(WORKSPACE_SEND_MODE_BINDINGS_KEY)) {
+    const separator = entry.indexOf(':');
+    if (separator <= 0) {
+      continue;
+    }
+
+    const workspaceNumber = Number.parseInt(entry.slice(0, separator), 10);
+    const keyName = acceleratorKeyName(entry.slice(separator + 1));
+    if (!Number.isInteger(workspaceNumber) || workspaceNumber < 1 || !keyName) {
+      continue;
+    }
+
+    targetMap.set(keyName, workspaceNumber - 1);
+  }
+
+  return targetMap;
+}
+
+/**
+ * Return whether a key release should end Super+U send mode.
+ *
+ * @param {string} keyName Normalized Clutter key name.
+ * @returns {boolean} True when the mode should stop.
+ */
+function keyReleaseStopsWorkspaceSendMode(keyName) {
+  return keyName === 'u' || keyName === 'super_l' || keyName === 'super_r';
+}
+
+/**
+ * Return the topmost normal window under the current pointer position.
+ *
+ * @returns {Meta.Window|null} Window under pointer, falling back to focus.
+ */
+function getWindowUnderPointer() {
+  const [, pointerX, pointerY] = global.get_pointer();
+  const windowActors = global.get_window_actors?.() || [];
+
+  for (let i = windowActors.length - 1; i >= 0; i--) {
+    const win = windowActors[i]?.get_meta_window?.();
+    if (!isUserWindow(win)) {
+      continue;
+    }
+
+    const frame = win.get_frame_rect?.();
+    if (!frame) {
+      continue;
+    }
+
+    if (
+      pointerX >= frame.x
+      && pointerX < frame.x + frame.width
+      && pointerY >= frame.y
+      && pointerY < frame.y + frame.height
+    ) {
+      return win;
+    }
+  }
+
+  return getFocusWindow();
+}
+
+/**
+ * Handle captured events while Super+U workspace-send mode is active.
+ *
+ * @param {Clutter.Event} event Captured stage event.
+ * @param {{active: boolean, targetWorkspace: ?number,
+ *   suppressRightRelease: boolean}} state Send-mode state.
+ * @param {Gio.Settings} settings Extension settings.
+ * @returns {number} Clutter.EVENT_STOP when the event was consumed.
+ */
+function handleWorkspaceSendModeEvent(event, state, settings) {
+  if (!state?.active) {
+    return Clutter.EVENT_PROPAGATE;
+  }
+
+  if (event.type === Clutter.EventType.KEY_PRESS) {
+    const keyName = normalizeKeySymbol(event.get_key_symbol());
+    const targetMap = getWorkspaceSendModeTargetMap(settings);
+    if (targetMap.has(keyName)) {
+      state.targetWorkspace = targetMap.get(keyName);
+      return Clutter.EVENT_STOP;
+    }
+  }
+
+  if (event.type === Clutter.EventType.KEY_RELEASE) {
+    const keyName = normalizeKeySymbol(event.get_key_symbol());
+    const targetMap = getWorkspaceSendModeTargetMap(settings);
+
+    if (keyReleaseStopsWorkspaceSendMode(keyName)) {
+      state.active = false;
+      state.targetWorkspace = null;
+      state.suppressRightRelease = false;
+      return Clutter.EVENT_STOP;
+    }
+
+    if (targetMap.get(keyName) === state.targetWorkspace) {
+      state.targetWorkspace = null;
+      return Clutter.EVENT_STOP;
+    }
+  }
+
+  if (event.type === Clutter.EventType.BUTTON_PRESS && event.get_button() === 3) {
+    if (state.targetWorkspace === null || state.targetWorkspace === undefined) {
+      return Clutter.EVENT_PROPAGATE;
+    }
+
+    moveWindowToWorkspace(getWindowUnderPointer(), state.targetWorkspace);
+    state.suppressRightRelease = true;
+    return Clutter.EVENT_STOP;
+  }
+
+  if (
+    event.type === Clutter.EventType.BUTTON_RELEASE
+    && event.get_button() === 3
+    && state.suppressRightRelease
+  ) {
+    state.suppressRightRelease = false;
+    return Clutter.EVENT_STOP;
+  }
+
+  return Clutter.EVENT_PROPAGATE;
 }
 
 /**
@@ -606,6 +822,11 @@ export default class MonitorWindowHotkeysExtension extends Extension {
       pointerX: 0,
       pointerY: 0,
     };
+    this._workspaceSendModeState = {
+      active: false,
+      targetWorkspace: null,
+      suppressRightRelease: false,
+    };
 
     const dbusImplementation = {
       TileRightHalf: tileFocusedWindowRightHalf,
@@ -635,6 +856,15 @@ export default class MonitorWindowHotkeysExtension extends Extension {
     this._capturedEventId = global.stage.connect('captured-event', (actor, event) => {
       if (this._pointerDragState?.timeoutId && pointerDragReleaseEvent(event)) {
         stopPointerDrag(this._pointerDragState);
+      }
+
+      const sendModeResult = handleWorkspaceSendModeEvent(
+        event,
+        this._workspaceSendModeState,
+        this._settings,
+      );
+      if (sendModeResult === Clutter.EVENT_STOP) {
+        return sendModeResult;
       }
 
       return Clutter.EVENT_PROPAGATE;
@@ -706,6 +936,30 @@ export default class MonitorWindowHotkeysExtension extends Extension {
     );
     this._keybindings.push(POINTER_DRAG_KEY);
 
+    Main.wm.addKeybinding(
+      WORKSPACE_SEND_MODE_KEY,
+      this._settings,
+      Meta.KeyBindingFlags.NONE,
+      Shell.ActionMode.NORMAL,
+      () => {
+        this._workspaceSendModeState.active = true;
+        this._workspaceSendModeState.targetWorkspace = null;
+        this._workspaceSendModeState.suppressRightRelease = false;
+      },
+    );
+    this._keybindings.push(WORKSPACE_SEND_MODE_KEY);
+
+    for (const binding of WORKSPACE_SEND_KEYBINDINGS) {
+      Main.wm.addKeybinding(
+        binding.name,
+        this._settings,
+        Meta.KeyBindingFlags.NONE,
+        Shell.ActionMode.NORMAL,
+        () => sendFocusedWindowToWorkspace(binding.workspace),
+      );
+      this._keybindings.push(binding.name);
+    }
+
   }
 
   /**
@@ -729,6 +983,8 @@ export default class MonitorWindowHotkeysExtension extends Extension {
       stopPointerDrag(this._pointerDragState);
       this._pointerDragState = null;
     }
+
+    this._workspaceSendModeState = null;
 
     if (this._capturedEventId) {
       global.stage.disconnect(this._capturedEventId);

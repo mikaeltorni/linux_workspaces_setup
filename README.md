@@ -11,18 +11,20 @@ Ubuntu GNOME workspace behavior, numbered-workspace hotkeys, and monitor/window 
 
 ## Default hotkeys
 
-The installer configures 8 workspaces by default. Workspace switch keys are cleared first, then filled from the configured map; unset workspace entries become empty bindings unless `WORKSPACE_CLEAR_UNUSED_BINDINGS=0` is set.
+The installer configures 8 workspaces by default. Workspace switch keys are cleared first, then filled from the configured map; unset workspace entries become empty bindings unless `WORKSPACE_CLEAR_UNUSED_BINDINGS=0` is set. GNOME's built-in `<Super><Shift>` move binding may follow the moved window; the extension also installs `<Control><Super><Shift>` variants that move the focused window without switching workspaces.
 
-| Work | Switch | Move to |
-|---|---|---|
-| 1 | `<Super>Z` | `<Super><Shift>Z` |
-| 2 | `<Super>X` | `<Super><Shift>X` |
-| 3 | `<Super>C` | `<Super><Shift>C` |
-| 4 | `<Super>A` | `<Super><Shift>A` |
-| 5 | `<Super>Q` | `<Super><Shift>Q` |
-| 6 | `<Super>W` | `<Super><Shift>W` |
-| 7 | `<Super>E` | `<Super><Shift>E` |
-| 8 | `<Super>R` | `<Super><Shift>R` |
+| Work | Switch | Move to | Send without switching |
+|---|---|---|---|
+| 1 | `<Super>Z` | `<Super><Shift>Z` | `<Control><Super><Shift>Z` |
+| 2 | `<Super>X` | `<Super><Shift>X` | `<Control><Super><Shift>X` |
+| 3 | `<Super>C` | `<Super><Shift>C` | `<Control><Super><Shift>C` |
+| 4 | `<Super>A` | `<Super><Shift>A` | `<Control><Super><Shift>A` |
+| 5 | `<Super>Q` | `<Super><Shift>Q` | `<Control><Super><Shift>Q` |
+| 6 | `<Super>W` | `<Super><Shift>W` | `<Control><Super><Shift>W` |
+| 7 | `<Super>E` | `<Super><Shift>E` | `<Control><Super><Shift>E` |
+| 8 | `<Super>R` | `<Super><Shift>R` | `<Control><Super><Shift>R` |
+
+The monitor/window hotkeys extension also provides a right-click send mode: hold `<Super>U`, press and hold one of the configured workspace switch keys, then right-click a window. For example, holding `<Super>U` then `Z` and right-clicking a window sends that window to workspace 1 without switching there. Releasing `U` or Super exits the mode.
 
 These defaults intentionally avoid Ubuntu/GNOME Tiling Assistant half-screen tiling shortcuts such as Super+Up/Down and Ctrl+Super+W/X/C. Known GNOME/Tiling Assistant conflicts are cleared during setup, including duplicate half-tile bindings that can steal Super+Up/Down or left/right tiling.
 
@@ -47,7 +49,7 @@ SUPER_ARROW_MOVE_BINDINGS='move-to-workspace-left:<Super><Shift>Left'
 OVERVIEW_BINDINGS='<Super>F9'
 ```
 
-If you omit an index up to `WORKSPACE_COUNT`, that workspace's switch/move keys remain empty. If a selected accelerator is still used by Ubuntu/GNOME/Tiling Assistant, run the explicit cleanup command as the target user:
+If you omit an index up to `WORKSPACE_COUNT`, that workspace's switch/move keys remain empty. The extension derives its no-switch `<Control>` variants and Super+U send-mode target keys from the same configured switch/move maps. If a selected accelerator is still used by Ubuntu/GNOME/Tiling Assistant, run the explicit cleanup command as the target user:
 
 ```bash
 env DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus" DISPLAY="${DISPLAY:-:0}" \
