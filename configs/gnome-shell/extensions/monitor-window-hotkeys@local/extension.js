@@ -371,7 +371,7 @@ function resizeFocusedWindow(edge, direction) {
  * @returns {boolean} True for a primary (left) mouse button release.
  */
 function pointerDragReleaseEvent(event) {
-  if (event.type !== Clutter.EventType.BUTTON_RELEASE) {
+  if (event.type() !== Clutter.EventType.BUTTON_RELEASE) {
     return false;
   }
 
@@ -473,11 +473,74 @@ function getWindowUnderPointer() {
 }
 
 /**
+ * Activate Super+U workspace-send mode by grabbing all input.
+ *
+ * The workspace selection keys (Super+Z..R) are global GNOME workspace-switch
+ * accelerators, so without an input grab Mutter consumes them before the
+ * extension's captured-event handler can see them. Pushing a modal grab routes
+ * every key and pointer event to the stage instead, letting send mode observe
+ * the selection keys and right-clicks directly. No-ops when already active or
+ * when the grab cannot be acquired.
+ *
+ * @param {{active: boolean, targetWorkspace: ?number,
+ *   suppressRightRelease: boolean, grab: ?object}} state Send-mode state.
+ * @returns {void}
+ */
+function startWorkspaceSendMode(state, eventActor) {
+  if (!state || state.active || !eventActor) {
+    return;
+  }
+
+  // Grab a dedicated reactive actor (not the stage): while a pointer grab is
+  // held the capture phase is skipped, so events only surface on the grab
+  // actor's own 'event' signal. NONE action mode disables every keybinding
+  // (including switch-to-workspace) so the selection keys fall through to us.
+  const grab = Main.pushModal(eventActor, { actionMode: Shell.ActionMode.NONE });
+  if (grab.get_seat_state() !== Clutter.GrabState.ALL) {
+    Main.popModal(grab);
+    console.error('monitor-window-hotkeys: failed to grab input for workspace send mode');
+    return;
+  }
+
+  state.grab = grab;
+  state.active = true;
+  state.targetWorkspace = null;
+  state.suppressRightRelease = false;
+  global.stage.set_key_focus(eventActor);
+}
+
+/**
+ * Deactivate Super+U workspace-send mode and release the input grab.
+ *
+ * Safe to call when send mode is not active. Always clears the grab so a
+ * partially-initialized or stale grab can never leave the seat captured.
+ *
+ * @param {{active: boolean, targetWorkspace: ?number,
+ *   suppressRightRelease: boolean, grab: ?object}|null} state Send-mode state.
+ * @returns {void}
+ */
+function stopWorkspaceSendMode(state) {
+  if (!state) {
+    return;
+  }
+
+  if (state.grab) {
+    global.stage.set_key_focus(null);
+    Main.popModal(state.grab);
+    state.grab = null;
+  }
+
+  state.active = false;
+  state.targetWorkspace = null;
+  state.suppressRightRelease = false;
+}
+
+/**
  * Handle captured events while Super+U workspace-send mode is active.
  *
  * @param {Clutter.Event} event Captured stage event.
  * @param {{active: boolean, targetWorkspace: ?number,
- *   suppressRightRelease: boolean}} state Send-mode state.
+ *   suppressRightRelease: boolean, grab: ?object}} state Send-mode state.
  * @param {Gio.Settings} settings Extension settings.
  * @returns {number} Clutter.EVENT_STOP when the event was consumed.
  */
@@ -486,7 +549,9 @@ function handleWorkspaceSendModeEvent(event, state, settings) {
     return Clutter.EVENT_PROPAGATE;
   }
 
-  if (event.type === Clutter.EventType.KEY_PRESS) {
+  const eventType = event.type();
+
+  if (eventType === Clutter.EventType.KEY_PRESS) {
     const keyName = normalizeKeySymbol(event.get_key_symbol());
     const targetMap = getWorkspaceSendModeTargetMap(settings);
     if (targetMap.has(keyName)) {
@@ -495,24 +560,23 @@ function handleWorkspaceSendModeEvent(event, state, settings) {
     }
   }
 
-  if (event.type === Clutter.EventType.KEY_RELEASE) {
+  if (eventType === Clutter.EventType.KEY_RELEASE) {
     const keyName = normalizeKeySymbol(event.get_key_symbol());
     const targetMap = getWorkspaceSendModeTargetMap(settings);
 
     if (keyReleaseStopsWorkspaceSendMode(keyName)) {
-      state.active = false;
-      state.targetWorkspace = null;
-      state.suppressRightRelease = false;
+      stopWorkspaceSendMode(state);
       return Clutter.EVENT_STOP;
     }
 
-    if (targetMap.get(keyName) === state.targetWorkspace) {
-      state.targetWorkspace = null;
+    // Keep the selected target sticky so a single workspace-key press can be
+    // followed by multiple right-click sends; just swallow the key release.
+    if (targetMap.has(keyName)) {
       return Clutter.EVENT_STOP;
     }
   }
 
-  if (event.type === Clutter.EventType.BUTTON_PRESS && event.get_button() === 3) {
+  if (eventType === Clutter.EventType.BUTTON_PRESS && event.get_button() === 3) {
     if (state.targetWorkspace === null || state.targetWorkspace === undefined) {
       return Clutter.EVENT_PROPAGATE;
     }
@@ -523,7 +587,7 @@ function handleWorkspaceSendModeEvent(event, state, settings) {
   }
 
   if (
-    event.type === Clutter.EventType.BUTTON_RELEASE
+    eventType === Clutter.EventType.BUTTON_RELEASE
     && event.get_button() === 3
     && state.suppressRightRelease
   ) {
@@ -814,6 +878,7 @@ export default class MonitorWindowHotkeysExtension extends Extension {
    * @returns {void}
    */
   enable() {
+    console.error('monitor-window-hotkeys: ENABLE clean-v3');
     this._settings = this.getSettings();
     this._keybindings = [];
     this._pointerDragState = {
@@ -826,6 +891,7 @@ export default class MonitorWindowHotkeysExtension extends Extension {
       active: false,
       targetWorkspace: null,
       suppressRightRelease: false,
+      grab: null,
     };
 
     const dbusImplementation = {
@@ -858,16 +924,21 @@ export default class MonitorWindowHotkeysExtension extends Extension {
         stopPointerDrag(this._pointerDragState);
       }
 
-      const sendModeResult = handleWorkspaceSendModeEvent(
+      return Clutter.EVENT_PROPAGATE;
+    });
+
+    // Dedicated, off-screen reactive actor used as the Super+U send-mode grab
+    // target. Events during a pointer grab are delivered only to the grab
+    // actor's 'event' signal (the capture phase is skipped), so send mode is
+    // handled here rather than on the stage's captured-event.
+    this._sendModeActor = new Clutter.Actor({ width: 0, height: 0, reactive: true });
+    Main.uiGroup.add_child(this._sendModeActor);
+    this._sendModeEventId = this._sendModeActor.connect('event', (actor, event) => {
+      return handleWorkspaceSendModeEvent(
         event,
         this._workspaceSendModeState,
         this._settings,
       );
-      if (sendModeResult === Clutter.EVENT_STOP) {
-        return sendModeResult;
-      }
-
-      return Clutter.EVENT_PROPAGATE;
     });
 
     for (const binding of MONITOR_KEYBINDINGS) {
@@ -941,11 +1012,7 @@ export default class MonitorWindowHotkeysExtension extends Extension {
       this._settings,
       Meta.KeyBindingFlags.NONE,
       Shell.ActionMode.NORMAL,
-      () => {
-        this._workspaceSendModeState.active = true;
-        this._workspaceSendModeState.targetWorkspace = null;
-        this._workspaceSendModeState.suppressRightRelease = false;
-      },
+      () => startWorkspaceSendMode(this._workspaceSendModeState, this._sendModeActor),
     );
     this._keybindings.push(WORKSPACE_SEND_MODE_KEY);
 
@@ -984,11 +1051,23 @@ export default class MonitorWindowHotkeysExtension extends Extension {
       this._pointerDragState = null;
     }
 
-    this._workspaceSendModeState = null;
+    if (this._workspaceSendModeState) {
+      stopWorkspaceSendMode(this._workspaceSendModeState);
+      this._workspaceSendModeState = null;
+    }
 
     if (this._capturedEventId) {
       global.stage.disconnect(this._capturedEventId);
       this._capturedEventId = null;
+    }
+
+    if (this._sendModeActor) {
+      if (this._sendModeEventId) {
+        this._sendModeActor.disconnect(this._sendModeEventId);
+        this._sendModeEventId = null;
+      }
+      this._sendModeActor.destroy();
+      this._sendModeActor = null;
     }
 
     if (this._keybindings) {
