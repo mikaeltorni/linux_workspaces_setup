@@ -38,10 +38,33 @@ parse_pipe_binding_entries \
 parse_pipe_binding_entries \
   "${SUPER_ARROW_MOVE_BINDINGS:-}" "|" SUPER_ARROW_MOVE_BINDINGS_ARRAY DEFAULT_SUPER_ARROW_MOVE_BINDINGS
 
+# Component selection runtime and this repository's component manifest. The
+# manifest maps each component id to a configure_* function from
+# lib/workspace_setup.sh.
+# Load the shared installer component framework. Its single source of truth is
+# the linux_installation_scripts_functions repository (cloned as a sibling by
+# installation_scripts, or downloaded on demand) -- no per-repo vendored copy.
+for __isc_d in "${ISC_FUNCTIONS_DIR:-}" \
+               "$SCRIPT_DIR/../linux_installation_scripts_functions" \
+               "$HOME/projects/linux_installation_scripts_functions"; do
+  [ -n "$__isc_d" ] && [ -f "$__isc_d/component_loader.sh" ] && { source "$__isc_d/component_loader.sh"; break; }
+done
+declare -F isc_activate_components >/dev/null 2>&1 || \
+  source <(curl -fsSL "https://raw.githubusercontent.com/mikaeltorni/linux_installation_scripts_functions/${ISC_FUNCTIONS_REF:-master}/component_loader.sh")
+isc_activate_components
+source "$SCRIPT_DIR/installer/components.sh"
+
 main() {
-  configure_ubuntu_workspaces_and_hotkeys "$@"
+  msg "Applying Ubuntu workspace setup"
+  component_main "$@"
+  msg "Ubuntu workspace setup complete. Log out and back in before testing GNOME Shell extension changes."
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # Listing/help must print only their own output (the master installer parses
+  # --list-components); bypass the surrounding messages for those.
+  case "${1:-}" in
+    --list-components|--help|-h) component_main "$@"; exit $? ;;
+  esac
   main "$@"
 fi

@@ -84,6 +84,36 @@ The Ctrl+Back service implementation is split across:
 
 Run `sudo bash install.sh` once from the master chain after all sibling repos have been cloned. For standalone runs, keep `../linux_automatic_window_tiling` nearby because this repo delegates automatic tiling activation to that installer with `<Super>t`. If you only need GNOME GSettings changes on an existing desktop session, run as the target user; root is needed for optional apt/package steps and Wayland shell-extension installation.
 
+## Component selection
+
+This repository's `install.sh` participates in the shared installer
+component menu (see the [`installation_scripts`](https://github.com/mikaeltorni/installation_scripts)
+master installer). Run standalone, it offers an interactive submenu on a
+terminal; the master installer drives it non-interactively.
+
+```bash
+bash install.sh                 # interactive component selection (TTY), else defaults
+bash install.sh --default       # install all default-on components, no prompts
+bash install.sh --all           # install every component, no prompts
+bash install.sh --select a,b    # install exactly these component ids
+bash install.sh --list-components  # print: id<TAB>label<TAB>default
+```
+
+In the interactive menu, **space** toggles a component, `a`/`n` select all
+or none, and **Enter** installs the selection. Components:
+
+| Component id | Description | Default |
+|---|---|---|
+| `screenshot` | Screenshot shortcuts | on |
+| `workspace_keys` | Numbered workspace switch/move keys | on |
+| `monitor_window_hotkeys` | Monitor/window movement hotkeys extension | on |
+| `automatic_window_tiling` | Automatic same-app window tiling | on |
+| `ctrl_back_tiler` | Ctrl+Back window tiler service | on |
+| `workspace_popup` | Numbered workspace popup extension | on |
+| `app_rules` | App-to-workspace window rules extension | on |
+| `auto_move_windows` | Auto-move-windows workspace placement | on |
+
+
 ## Disclaimer
 
 This software is provided under the MIT License on an **“as is”** basis, without warranties of any kind. To the maximum extent permitted by applicable law, the authors and copyright holders shall not be liable for any claims, damages, losses, or other liability arising from the use of this software.
