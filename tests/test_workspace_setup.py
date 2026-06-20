@@ -166,6 +166,23 @@ def test_workspace_assets_and_delegation_are_present():
     assert "send-active-window-to-workspace-8" in extension
 
 
+def test_gsettings_list_mutation_uses_extracted_helper():
+    setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
+    apply_bindings = (
+        ROOT_DIR
+        / "configs"
+        / "gnome-shell"
+        / "extensions"
+        / "monitor-window-hotkeys@local"
+        / "apply-system-bindings.sh"
+    ).read_text(encoding="utf-8")
+
+    assert "gsettings_strv.py" in setup
+    assert "python3 - <<'PY'" not in setup
+    assert "gsettings-strv.py" in apply_bindings
+    assert "python3 - <<'PY'" not in apply_bindings
+
+
 if __name__ == "__main__":
     tests = [t for name, t in sorted(globals().items()) if name.startswith("test_") and callable(t)]
     failed = 0
