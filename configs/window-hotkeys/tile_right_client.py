@@ -6,13 +6,15 @@ the request logic can be exercised independently from the evdev event loop.
 
 from __future__ import annotations
 
-import sys
-
 import gi
 
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib
 
+from logging_setup import get_logger
+
+
+_log = get_logger("ctrl-back-window-tiler")
 
 DBUS_BUS_NAME = "org.gnome.shell.extensions.MonitorWindowHotkeys"
 DBUS_OBJECT_PATH = "/org/gnome/shell/extensions/monitor_window_hotkeys"
@@ -54,10 +56,6 @@ class TileRightClient:
                 1000,
                 None,
             )
-            print("tiled focused window to the right half", flush=True)
+            _log.info("tiled focused window to the right half")
         except GLib.Error as exc:
-            print(
-                f"ctrl-back-window-tiler: D-Bus tiling failed: {exc.message}",
-                file=sys.stderr,
-                flush=True,
-            )
+            _log.error("D-Bus tiling failed: %s", exc.message)

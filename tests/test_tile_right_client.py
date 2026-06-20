@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
+import sys
 from pathlib import Path
 
 import gi
@@ -13,13 +15,20 @@ from gi.repository import Gio, GLib
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+WINDOW_HOTKEYS_DIR = ROOT_DIR / "configs" / "window-hotkeys"
 MODULE_PATH = (
-    ROOT_DIR / "configs" / "window-hotkeys" / "tile_right_client.py"
+    WINDOW_HOTKEYS_DIR / "tile_right_client.py"
 )
 
 
 def load_module():
     """Load the tiling-client module from the installer asset directory."""
+    if str(WINDOW_HOTKEYS_DIR) not in sys.path:
+        sys.path.insert(0, str(WINDOW_HOTKEYS_DIR))
+    logger = logging.getLogger("ctrl-back-window-tiler")
+    for handler in logger.handlers[:]:
+        handler.close()
+        logger.removeHandler(handler)
     spec = importlib.util.spec_from_file_location(
         "tile_right_client",
         MODULE_PATH,
@@ -66,7 +75,9 @@ def test_tile_right_invokes_the_extension_dbus_method(capsys):
     assert flags == Gio.DBusCallFlags.NONE
     assert timeout == 1000
     assert cancellable is None
-    assert "tiled focused window to the right half" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "tiled focused window to the right half" in captured.err
+    assert captured.out == ""
 
 
 def test_tile_right_reports_dbus_failure_without_raising(capsys):

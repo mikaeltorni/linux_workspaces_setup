@@ -13,7 +13,6 @@ import atexit
 import os
 import select
 import signal
-import sys
 import time
 from dataclasses import dataclass
 
@@ -21,8 +20,11 @@ from evdev import InputDevice, UInput, ecodes, list_devices
 
 from ctrl_back_event_state import CtrlBackEventState
 from input_device_paths import input_device_sort_key
+from logging_setup import get_logger
 from tile_right_client import TileRightClient
 
+
+_log = get_logger("ctrl-back-window-tiler")
 
 FORWARD_EVENT_TYPES = {
     ecodes.EV_KEY,
@@ -73,7 +75,7 @@ class CtrlBackWindowTiler:
         signal.signal(signal.SIGTERM, self._stop)
         signal.signal(signal.SIGINT, self._stop)
         self._open_devices()
-        print("ctrl-back-window-tiler running (direct D-Bus mode)", flush=True)
+        _log.info("ctrl-back-window-tiler running (direct D-Bus mode)")
 
         try:
             while self.running:
@@ -179,12 +181,7 @@ class CtrlBackWindowTiler:
             grabbed = False
             if is_pointer:
                 if not self._is_back_pointer(caps):
-                    print(
-                        f"ctrl-back-window-tiler: {path} is not a back-button "
-                        "pointing device",
-                        file=sys.stderr,
-                        flush=True,
-                    )
+                    _log.warning("%s is not a back-button pointing device", path)
                     device.close()
                     self.pointer_path = ""
                     continue
@@ -194,7 +191,7 @@ class CtrlBackWindowTiler:
 
             self.devices.append(WatchedDevice(device=device, grabbed=grabbed))
             mode = "grabbed pointer" if grabbed else "Ctrl monitor"
-            print(f"watching {path}: {device.name} [{mode}]", flush=True)
+            _log.info("watching %s: %s [%s]", path, device.name, mode)
 
     def _select_pointer_path(self, paths: list[str]) -> str:
         """Resolve a configured stable path or auto-detect an available pointer."""
@@ -255,11 +252,7 @@ class CtrlBackWindowTiler:
             device.grab()
             return True
         except OSError as exc:
-            print(
-                f"ctrl-back-window-tiler: could not grab {device.path}: {exc}",
-                file=sys.stderr,
-                flush=True,
-            )
+            _log.error("could not grab %s: %s", device.path, exc)
             return False
 
     def _add_forward_capabilities(self, caps: dict[int, list[int]]) -> None:

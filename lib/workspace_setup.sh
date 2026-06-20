@@ -480,6 +480,7 @@ configure_ctrl_back_window_tiler_service() {
   local state_source="$CONFIG_DIR/window-hotkeys/ctrl_back_event_state.py"
   local paths_source="$CONFIG_DIR/window-hotkeys/input_device_paths.py"
   local client_source="$CONFIG_DIR/window-hotkeys/tile_right_client.py"
+  local logging_source="$CONFIG_DIR/window-hotkeys/logging_setup.py"
   local service_source="$CONFIG_DIR/window-hotkeys/ctrl-back-window-tiler.service"
   local bin_dir="$TARGET_HOME/.local/bin"
   local service_target="$TARGET_HOME/.config/systemd/user/ctrl-back-window-tiler.service"
@@ -496,11 +497,13 @@ configure_ctrl_back_window_tiler_service() {
     install -m 0644 -o "$TARGET_USER" -g "$TARGET_USER" "$state_source" "$bin_dir/ctrl_back_event_state.py"
     install -m 0644 -o "$TARGET_USER" -g "$TARGET_USER" "$paths_source" "$bin_dir/input_device_paths.py"
     install -m 0644 -o "$TARGET_USER" -g "$TARGET_USER" "$client_source" "$bin_dir/tile_right_client.py"
+    install -m 0644 -o "$TARGET_USER" -g "$TARGET_USER" "$logging_source" "$bin_dir/logging_setup.py"
   else
     install -m 0755 "$script_source" "$bin_dir/ctrl_back_tile_right.py"
     install -m 0644 "$state_source" "$bin_dir/ctrl_back_event_state.py"
     install -m 0644 "$paths_source" "$bin_dir/input_device_paths.py"
     install -m 0644 "$client_source" "$bin_dir/tile_right_client.py"
+    install -m 0644 "$logging_source" "$bin_dir/logging_setup.py"
   fi
   run_as_target tee "$service_target" >/dev/null <<EOF
 [Unit]
