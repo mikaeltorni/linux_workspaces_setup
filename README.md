@@ -2,6 +2,23 @@
 
 Ubuntu GNOME workspace behavior, numbered-workspace hotkeys, and monitor/window tiling shortcuts are owned by this repository. The old `linux_hotkey_setup` repository no longer owns these items; run this installer from the master setup chain or directly after cloning its sibling repos.
 
+## Repository dependencies
+
+This repository installs and runs **standalone**; sibling repositories only
+enhance it and never block installation when absent.
+
+- **Build-time (soft):** the shared installer component framework
+  [`linux_installation_scripts_functions`](https://github.com/mikaeltorni/linux_installation_scripts_functions) —
+  loaded from a sibling checkout when present, otherwise downloaded on demand.
+- **Delegated install (optional):** when it sits beside it, this installer also
+  installs
+  [`linux_automatic_window_tiling`](https://github.com/mikaeltorni/linux_automatic_window_tiling)
+  (with the chosen accelerator). If that checkout is missing, the tiling action
+  is skipped — the rest of the workspace setup still installs.
+
+See the full cross-repository map in
+[installation_scripts/DEPENDENCIES.md](https://github.com/mikaeltorni/installation_scripts/blob/master/DEPENDENCIES.md).
+
 ## Ownership map
 
 - From `linux_hotkey_setup`: workspace switch/move keybindings, screenshot/Albert bindings, monitor/window hotkeys extension, numbered workspace popup, Ctrl+Back window tiler service, and xmousepasteblock clipboard-lock wiring.
