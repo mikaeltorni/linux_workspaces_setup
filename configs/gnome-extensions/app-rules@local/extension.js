@@ -1,5 +1,15 @@
+// extension.js - app-rules@local GNOME Shell extension.
+//
+// Pins specific applications to fixed workspaces or makes them sticky as their
+// windows are created. Rules are matched by desktop-file app id.
+//
+// Components:
+//   - getAppId: Resolve a window's desktop-file app id.
+//   - applyRule: Move a window to a workspace and/or make it sticky.
+//   - matchAndApply: Find and apply the first rule matching a window.
+//   - AppRulesExtension: Extension entry point wiring up window tracking.
+
 import Shell from 'gi://Shell';
-import Meta from 'gi://Meta';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const RULES = [
@@ -12,6 +22,13 @@ const RULES = [
   { appIds: ['spotify.desktop', 'spotify_spotify.desktop'], sticky: true },
 ];
 
+/**
+ * Resolve the desktop-file app id for a window.
+ *
+ * @param {Meta.Window} win - The window to identify.
+ * @returns {string|null} The app id (e.g. "spotify.desktop") or null when the
+ *   window has no tracked application or lookup fails.
+ */
 function getAppId(win) {
   try {
     const tracker = Shell.WindowTracker.get_default();
@@ -22,6 +39,15 @@ function getAppId(win) {
   }
 }
 
+/**
+ * Apply a single rule to a window: move it to a workspace and/or stick it.
+ *
+ * @param {Meta.Window} win - The window to act on. No-op for null or
+ *   skip-taskbar (utility/override) windows.
+ * @param {{workspace?: number, sticky?: boolean}} rule - The rule to apply.
+ *   `workspace` is a zero-based index; `sticky` pins to all workspaces.
+ * @returns {void}
+ */
 function applyRule(win, rule) {
   if (!win || win.skip_taskbar) {
     return;
@@ -47,6 +73,12 @@ function applyRule(win, rule) {
   }
 }
 
+/**
+ * Find the first rule whose app ids match the window and apply it.
+ *
+ * @param {Meta.Window} win - The window to match against {@link RULES}.
+ * @returns {void}
+ */
 function matchAndApply(win) {
   const appId = (getAppId(win) || '').toLowerCase();
   if (!appId) {
