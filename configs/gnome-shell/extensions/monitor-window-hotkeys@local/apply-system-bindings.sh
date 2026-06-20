@@ -126,7 +126,9 @@ else
   printf 'Tiling Assistant settings schema not found; skipping conflicting binding cleanup.\n'
 fi
 
+# Enable this extension and the Tiling Assistant it cooperates with. These are
+# two independent top-level enables, not a single grouped step.
 ensure_enabled_extension
-  append_strv_value org.gnome.shell enabled-extensions "tiling-assistant@ubuntu.com"
+append_strv_value org.gnome.shell enabled-extensions "tiling-assistant@ubuntu.com"
 
 printf 'Applied monitor/window hotkeys. Log out and back in if GNOME Shell has not loaded the extension yet.\n'
