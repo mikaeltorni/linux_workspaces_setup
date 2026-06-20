@@ -70,8 +70,28 @@ TILING_CONFLICT_UNBINDINGS=(
   "tile-right-half:<Super>Right"
 )
 
+# Centralized installer log. Every repository-generated log lands under the
+# repo-root .log/ directory (created on demand); messages are still echoed to
+# the console so interactive runs and the master installer see live progress.
+: "${WORKSPACE_SETUP_LOG_DIR:=$WORKSPACE_SETUP_DIR/.log}"
+: "${WORKSPACE_SETUP_LOG_FILE:=$WORKSPACE_SETUP_LOG_DIR/install.log}"
+
+# log_line LEVEL MESSAGE - append a timestamped record to the install log.
+#   LEVEL:   severity tag (INFO, WARN, ERROR).
+#   MESSAGE: text to record; never fails the install if the log is unwritable.
+log_line() {
+  local level="$1"
+  shift
+  mkdir -p "$WORKSPACE_SETUP_LOG_DIR" 2>/dev/null || return 0
+  printf '%s %s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$level" "$*" \
+    >>"$WORKSPACE_SETUP_LOG_FILE" 2>/dev/null || true
+}
+
+# msg MESSAGE - print a banner to the console and mirror it to the install log.
+#   MESSAGE: human-readable progress text.
 msg() {
   printf '\n==> %s\n' "$*"
+  log_line INFO "$*"
 }
 
 need_cmd() {
