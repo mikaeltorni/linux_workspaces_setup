@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Tests for input device path ordering helpers."""
+"""Tests for input device path ordering and stable-alias helpers."""
 
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 
 
@@ -68,3 +69,40 @@ def test_event_path_requires_a_numeric_suffix():
         1,
         "/dev/input/eventx",
     )
+
+
+def test_stable_device_path_prefers_matching_by_id_symlink(tmp_path):
+    module = load_module()
+
+    event_node = tmp_path / "event5"
+    event_node.write_text("")
+    by_id_dir = tmp_path / "by-id"
+    by_id_dir.mkdir()
+    alias = by_id_dir / "usb-Some_Mouse-event-mouse"
+    os.symlink(event_node, alias)
+
+    assert module.stable_device_path(str(event_node), str(by_id_dir)) == str(alias)
+
+
+def test_stable_device_path_returns_input_when_no_alias_matches(tmp_path):
+    module = load_module()
+
+    event_node = tmp_path / "event5"
+    event_node.write_text("")
+    other_node = tmp_path / "event6"
+    other_node.write_text("")
+    by_id_dir = tmp_path / "by-id"
+    by_id_dir.mkdir()
+    os.symlink(other_node, by_id_dir / "usb-Other-event-mouse")
+
+    assert module.stable_device_path(str(event_node), str(by_id_dir)) == str(event_node)
+
+
+def test_stable_device_path_returns_input_when_by_id_dir_missing(tmp_path):
+    module = load_module()
+
+    event_node = tmp_path / "event5"
+    event_node.write_text("")
+
+    missing_dir = tmp_path / "absent"
+    assert module.stable_device_path(str(event_node), str(missing_dir)) == str(event_node)

@@ -444,12 +444,12 @@ select_input_device() {
   local device_list
   device_list="$(PYTHONPATH="$CONFIG_DIR/window-hotkeys${PYTHONPATH:+:$PYTHONPATH}" python3 -c '
 from evdev import InputDevice, ecodes, list_devices
-from input_device_paths import event_sort_key, stable_device_path
+from input_device_paths import input_device_sort_key, stable_device_path
 
 BACK_CODES = {ecodes.KEY_BACK, ecodes.BTN_SIDE, ecodes.BTN_EXTRA}
 POINTER_RELS = {ecodes.REL_X, ecodes.REL_Y}
 devices = []
-for path in sorted(list_devices(), key=event_sort_key):
+for path in sorted(list_devices(), key=input_device_sort_key):
     try:
         dev = InputDevice(path)
     except OSError:
