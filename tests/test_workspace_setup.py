@@ -152,6 +152,7 @@ configure_workspace_send_extension_bindings >/dev/null 2>&1
 
 def test_workspace_assets_and_delegation_are_present():
     assert (ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/extension.js").is_file()
+    assert (ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/gsettings-strv.py").is_file()
     assert (ROOT_DIR / "configs/window-hotkeys/ctrl_back_tile_right.py").is_file()
     assert (ROOT_DIR / "configs/window-hotkeys/ctrl_back_event_state.py").is_file()
     assert (ROOT_DIR / "configs/window-hotkeys/input_device_paths.py").is_file()
