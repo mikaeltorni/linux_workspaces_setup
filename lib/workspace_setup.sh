@@ -170,52 +170,17 @@ set_gsettings_strv_if_key_exists() {
 }
 
 append_gsettings_list() {
-  local schema="$1" key="$2" value="$3"
-  run_as_target env SCHEMA="$schema" KEY="$key" VALUE="$value" python3 - <<'PY'
-import ast
-import os
-import subprocess
-import sys
-
-schema = os.environ["SCHEMA"]
-key = os.environ["KEY"]
-value = os.environ["VALUE"]
-current = subprocess.run(["gsettings", "get", schema, key], text=True, capture_output=True, check=False).stdout.strip()
-if current.startswith("@as "):
-    current = current[4:].strip()
-try:
-    values = ast.literal_eval(current) if current else []
-except Exception:
-    values = []
-if value not in values:
-    values.append(value)
-new_value = "[" + ", ".join(repr(str(v)) for v in values) + "]"
-sys.exit(subprocess.run(["gsettings", "set", schema, key, new_value], check=False).returncode)
-PY
+  local schema="$1" key="$2" value="$3" current new_value
+  current="$(user_gsettings get "$schema" "$key" 2>/dev/null || printf '[]')"
+  new_value="$(CURRENT="$current" python3 "$WORKSPACE_SETUP_LIB_DIR/gsettings_strv.py" append "$value")"
+  user_gsettings set "$schema" "$key" "$new_value"
 }
 
 remove_gsettings_list() {
-  local schema="$1" key="$2" value="$3"
-  run_as_target env SCHEMA="$schema" KEY="$key" VALUE="$value" python3 - <<'PY'
-import ast
-import os
-import subprocess
-import sys
-
-schema = os.environ["SCHEMA"]
-key = os.environ["KEY"]
-value = os.environ["VALUE"]
-current = subprocess.run(["gsettings", "get", schema, key], text=True, capture_output=True, check=False).stdout.strip()
-if current.startswith("@as "):
-    current = current[4:].strip()
-try:
-    values = ast.literal_eval(current) if current else []
-except Exception:
-    values = []
-values = [str(item) for item in values if str(item) != value]
-new_value = "[" + ", ".join(repr(v) for v in values) + "]"
-sys.exit(subprocess.run(["gsettings", "set", schema, key, new_value], check=False).returncode)
-PY
+  local schema="$1" key="$2" value="$3" current new_value
+  current="$(user_gsettings get "$schema" "$key" 2>/dev/null || printf '[]')"
+  new_value="$(CURRENT="$current" python3 "$WORKSPACE_SETUP_LIB_DIR/gsettings_strv.py" remove "$value")"
+  user_gsettings set "$schema" "$key" "$new_value"
 }
 
 parse_pipe_binding_entries() {
