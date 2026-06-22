@@ -22,6 +22,19 @@ DISPLAY_VAL="${DISPLAY:-:0}"
 USER_BUS="unix:path=${RUNTIME_DIR}/bus"
 SESSION_TYPE="${XDG_SESSION_TYPE:-unknown}"
 
+# Load the shared installer framework + shared install-time helpers (single
+# source of truth in linux_installation_scripts_functions) BEFORE workspace_setup
+# so the repo's own msg()/apt_install() (sourced next) override the shared ones.
+# No vendored copy: resolve a sibling checkout or download on demand.
+for __isc_d in "${ISC_FUNCTIONS_DIR:-}" \
+               "$SCRIPT_DIR/../linux_installation_scripts_functions" \
+               "$HOME/projects/linux_installation_scripts_functions"; do
+  [ -n "$__isc_d" ] && [ -f "$__isc_d/component_loader.sh" ] && { source "$__isc_d/component_loader.sh"; break; }
+done
+declare -F isc_load_helpers >/dev/null 2>&1 || \
+  source <(curl -fsSL "https://raw.githubusercontent.com/mikaeltorni/linux_installation_scripts_functions/${ISC_FUNCTIONS_REF:-master}/component_loader.sh")
+isc_load_helpers
+
 source "$SCRIPT_DIR/lib/workspace_setup.sh"
 
 if [ -f "${WORKSPACE_BINDING_CONFIG:-$CONFIG_DIR/workspace-bindings.conf}" ] && \
@@ -40,17 +53,8 @@ parse_pipe_binding_entries \
 
 # Component selection runtime and this repository's component manifest. The
 # manifest maps each component id to a configure_* function from
-# lib/workspace_setup.sh.
-# Load the shared installer component framework. Its single source of truth is
-# the linux_installation_scripts_functions repository (cloned as a sibling by
-# installation_scripts, or downloaded on demand) -- no per-repo vendored copy.
-for __isc_d in "${ISC_FUNCTIONS_DIR:-}" \
-               "$SCRIPT_DIR/../linux_installation_scripts_functions" \
-               "$HOME/projects/linux_installation_scripts_functions"; do
-  [ -n "$__isc_d" ] && [ -f "$__isc_d/component_loader.sh" ] && { source "$__isc_d/component_loader.sh"; break; }
-done
-declare -F isc_activate_components >/dev/null 2>&1 || \
-  source <(curl -fsSL "https://raw.githubusercontent.com/mikaeltorni/linux_installation_scripts_functions/${ISC_FUNCTIONS_REF:-master}/component_loader.sh")
+# lib/workspace_setup.sh. The framework was already resolved above (for
+# isc_load_helpers); activate the component runtime from the same checkout.
 isc_activate_components
 source "$SCRIPT_DIR/installer/components.sh"
 
