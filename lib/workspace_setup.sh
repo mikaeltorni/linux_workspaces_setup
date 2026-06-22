@@ -94,49 +94,11 @@ msg() {
   log_line INFO "$*"
 }
 
-need_cmd() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-is_root() {
-  [ "$(id -u)" -eq 0 ]
-}
-
-SUDO_REQUIRED_STEPS=()
-
-note_sudo_required() {
-  SUDO_REQUIRED_STEPS+=("$1")
-  msg "SKIP (requires sudo): $1"
-}
-
-report_sudo_required() {
-  [ "${#SUDO_REQUIRED_STEPS[@]}" -eq 0 ] && return 0
-  msg "The following steps still require root and were skipped:"
-  printf '    - %s\n' "${SUDO_REQUIRED_STEPS[@]}"
-  msg "Apply them with: sudo bash install.sh"
-}
-
-run_as_target() {
-  if [ "$(id -un)" = "$TARGET_USER" ]; then
-    env \
-      HOME="$TARGET_HOME" \
-      USER="$TARGET_USER" \
-      LOGNAME="$TARGET_USER" \
-      XDG_RUNTIME_DIR="$RUNTIME_DIR" \
-      DBUS_SESSION_BUS_ADDRESS="$USER_BUS" \
-      DISPLAY="$DISPLAY_VAL" \
-      "$@"
-  else
-    sudo -H -u "$TARGET_USER" env \
-      HOME="$TARGET_HOME" \
-      USER="$TARGET_USER" \
-      LOGNAME="$TARGET_USER" \
-      XDG_RUNTIME_DIR="$RUNTIME_DIR" \
-      DBUS_SESSION_BUS_ADDRESS="$USER_BUS" \
-      DISPLAY="$DISPLAY_VAL" \
-      "$@"
-  fi
-}
+# need_cmd, is_root, run_as_target, and the sudo-skip reporting are provided by
+# the framework's installer_helpers.sh (loaded by install.sh via isc_load_helpers
+# before this file). The custom msg() above is kept because it also mirrors to
+# the install log, and apt_install below is kept because it batches via
+# apt_update_once.
 
 user_gsettings() {
   run_as_target gsettings "$@"
