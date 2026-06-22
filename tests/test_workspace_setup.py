@@ -10,11 +10,16 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+HELPERS = ROOT_DIR.parent / "linux_installation_scripts_functions" / "installer_helpers.sh"
 
 
 def run_bash(script: str, env=None) -> subprocess.CompletedProcess[str]:
+    # The shared install-time helpers (run_as_target, need_cmd, …) now live in the
+    # framework and are loaded by install.sh before lib/workspace_setup.sh, so the
+    # harness sources them first; workspace_setup.sh then overrides its own msg().
+    full = f'source {str(HELPERS)!r}\n{script}'
     return subprocess.run(
-        ["bash", "-c", script],
+        ["bash", "-c", full],
         cwd=ROOT_DIR,
         text=True,
         capture_output=True,
