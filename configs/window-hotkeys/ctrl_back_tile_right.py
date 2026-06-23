@@ -20,7 +20,7 @@ from evdev import InputDevice, UInput, ecodes, list_devices
 
 from ctrl_back_event_state import CtrlBackEventState
 from input_device_paths import input_device_sort_key
-from logging_setup import get_logger
+from logging_setup import get_logger, log_call
 from tile_right_client import TileRightClient
 
 
@@ -58,6 +58,7 @@ class WatchedDevice:
 class CtrlBackWindowTiler:
     """Consume Ctrl+Back and invoke the GNOME Shell right-half tiler."""
 
+    @log_call(_log)
     def __init__(self) -> None:
         self.devices: list[WatchedDevice] = []
         self.event_state = CtrlBackEventState()
@@ -120,20 +121,20 @@ class CtrlBackWindowTiler:
             if entry.grabbed:
                 try:
                     entry.device.ungrab()
-                except OSError:
-                    pass
+                except OSError as exc:
+                    _log.warning("could not ungrab %s during shutdown: %s", path, exc)
             try:
                 entry.device.close()
-            except OSError:
-                pass
+            except OSError as exc:
+                _log.warning("could not close %s during shutdown: %s", path, exc)
             self._clear_device_state(path)
         self.devices = []
 
         if self.ui:
             try:
                 self.ui.close()
-            except OSError:
-                pass
+            except OSError as exc:
+                _log.warning("could not close virtual input device: %s", exc)
             self.ui = None
 
     def _stop(self, *_args: object) -> None:
@@ -144,6 +145,7 @@ class CtrlBackWindowTiler:
         """
         self.running = False
 
+    @log_call(_log)
     def _open_devices(self) -> None:
         """Open the selected pointer and all Ctrl-capable keyboard nodes."""
         self.forward_capabilities = {}
@@ -164,10 +166,12 @@ class CtrlBackWindowTiler:
             try:
                 device = InputDevice(path)
                 caps = device.capabilities(absinfo=False)
-            except OSError:
+            except OSError as exc:
+                _log.debug("could not inspect input device %s: %s", path, exc)
                 continue
 
             if device.name == VIRTUAL_DEVICE_NAME:
+                _log.debug("ignoring own virtual input device %s", path)
                 device.close()
                 continue
 
@@ -193,34 +197,41 @@ class CtrlBackWindowTiler:
             mode = "grabbed pointer" if grabbed else "Ctrl monitor"
             _log.info("watching %s: %s [%s]", path, device.name, mode)
 
+    @log_call(_log)
     def _select_pointer_path(self, paths: list[str]) -> str:
         """Resolve a configured stable path or auto-detect an available pointer."""
         if self.target_device:
             resolved_path = os.path.realpath(self.target_device)
             if resolved_path in paths:
                 return resolved_path
+            _log.warning("configured pointer device is unavailable: %s", self.target_device)
             return ""
 
         if self.pointer_path in paths:
             return self.pointer_path
         return self._find_pointer_path(paths)
 
+    @log_call(_log)
     def _find_pointer_path(self, paths: list[str]) -> str:
         """Choose the first non-keyboard pointing node with a back button."""
         for path in paths:
             try:
                 device = InputDevice(path)
                 caps = device.capabilities(absinfo=False)
-            except OSError:
+            except OSError as exc:
+                _log.debug("could not inspect candidate pointer %s: %s", path, exc)
                 continue
 
             name = device.name
             device.close()
             if name == VIRTUAL_DEVICE_NAME or "Keychron" in name:
+                _log.debug("skipping pointer candidate %s [%s]", path, name)
                 continue
             if self._is_back_pointer(caps):
+                _log.info("auto-detected back-button pointer %s [%s]", path, name)
                 return path
 
+        _log.warning("no back-button pointer device found")
         return ""
 
     @staticmethod
@@ -277,8 +288,8 @@ class CtrlBackWindowTiler:
         if self.ui:
             try:
                 self.ui.close()
-            except OSError:
-                pass
+            except OSError as exc:
+                _log.warning("could not close old virtual input device: %s", exc)
             self.ui = None
 
         if not self.forward_capabilities:
@@ -292,6 +303,7 @@ class CtrlBackWindowTiler:
             },
             name=VIRTUAL_DEVICE_NAME,
         )
+        _log.info("created virtual input device for pass-through events")
 
     def _rescan_devices(self) -> None:
         """Periodically pick up hot-plugged devices, rebuilding uinput if needed.
@@ -312,12 +324,14 @@ class CtrlBackWindowTiler:
         if self.forward_capabilities != before:
             self._open_uinput()
 
+    @log_call(_log)
     def _reopen_devices(self) -> None:
         """Recover from a device read/select error by closing and reopening all.
 
         When no device is explicitly configured, the cached pointer path is
         cleared so auto-detection runs again on reopen.
         """
+        _log.warning("reopening input devices after a read/select failure")
         self.close()
         if not self.target_device:
             self.pointer_path = ""
@@ -391,6 +405,7 @@ class CtrlBackWindowTiler:
             entry.grabbed,
         )
         if decision.tile:
+            _log.info("Ctrl+Back detected on %s; requesting right-half tiling", entry.device.path)
             self.tiler.tile_right()
 
         if decision.forward:

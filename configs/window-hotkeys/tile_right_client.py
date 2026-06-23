@@ -11,7 +11,7 @@ import gi
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib
 
-from logging_setup import get_logger
+from logging_setup import get_logger, log_call
 
 
 _log = get_logger("ctrl-back-window-tiler")
@@ -30,22 +30,32 @@ class TileRightClient:
             tests exercise the request logic without a live session bus.
     """
 
+    @log_call(_log)
     def __init__(self, proxy: Gio.DBusProxy | None = None) -> None:
         self._proxy = proxy if proxy is not None else self._create_proxy()
 
     @staticmethod
+    @log_call(_log)
     def _create_proxy() -> Gio.DBusProxy:
         """Create a proxy for the GNOME Shell extension's tiling API."""
-        return Gio.DBusProxy.new_for_bus_sync(
-            Gio.BusType.SESSION,
-            Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES,
-            None,
-            DBUS_BUS_NAME,
-            DBUS_OBJECT_PATH,
-            DBUS_INTERFACE,
-            None,
-        )
+        try:
+            return Gio.DBusProxy.new_for_bus_sync(
+                Gio.BusType.SESSION,
+                Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES,
+                None,
+                DBUS_BUS_NAME,
+                DBUS_OBJECT_PATH,
+                DBUS_INTERFACE,
+                None,
+            )
+        except GLib.Error as exc:
+            _log.error(
+                "could not create D-Bus proxy for monitor-window-hotkeys: %s",
+                exc.message,
+            )
+            raise
 
+    @log_call(_log)
     def tile_right(self) -> None:
         """Tile the focused window directly, bypassing keyboard shortcuts."""
         try:
