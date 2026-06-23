@@ -87,6 +87,14 @@ log_line() {
     >>"$WORKSPACE_SETUP_LOG_FILE" 2>/dev/null || true
 }
 
+log_debug() {
+  log_line DEBUG "$*"
+}
+
+log_warn() {
+  log_line WARN "$*"
+}
+
 # msg MESSAGE - print a banner to the console and mirror it to the install log.
 #   MESSAGE: human-readable progress text.
 msg() {
@@ -153,15 +161,23 @@ set_gsettings_strv_if_key_exists() {
 
 append_gsettings_list() {
   local schema="$1" key="$2" value="$3" current new_value
-  current="$(user_gsettings get "$schema" "$key" 2>/dev/null || printf '[]')"
+  if ! current="$(user_gsettings get "$schema" "$key" 2>/dev/null)"; then
+    log_warn "Could not read $schema $key; using an empty list before appending $value"
+    current="[]"
+  fi
   new_value="$(CURRENT="$current" python3 "$WORKSPACE_SETUP_LIB_DIR/gsettings_strv.py" append "$value")"
+  log_debug "Setting $schema $key to $new_value"
   user_gsettings set "$schema" "$key" "$new_value"
 }
 
 remove_gsettings_list() {
   local schema="$1" key="$2" value="$3" current new_value
-  current="$(user_gsettings get "$schema" "$key" 2>/dev/null || printf '[]')"
+  if ! current="$(user_gsettings get "$schema" "$key" 2>/dev/null)"; then
+    log_warn "Could not read $schema $key; using an empty list before removing $value"
+    current="[]"
+  fi
   new_value="$(CURRENT="$current" python3 "$WORKSPACE_SETUP_LIB_DIR/gsettings_strv.py" remove "$value")"
+  log_debug "Setting $schema $key to $new_value"
   user_gsettings set "$schema" "$key" "$new_value"
 }
 

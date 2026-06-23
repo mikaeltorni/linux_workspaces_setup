@@ -188,6 +188,34 @@ def test_gsettings_list_mutation_uses_extracted_helper():
     assert "python3 - <<'PY'" not in apply_bindings
 
 
+def test_workspace_setup_logging_is_centralized_and_best_effort():
+    with tempfile.TemporaryDirectory() as td:
+        env = os.environ.copy()
+        env.update(
+            {
+                "TARGET_USER": os.environ["USER"],
+                "TARGET_HOME": str(Path(td) / "home"),
+                "WORKSPACE_SETUP_LOG_DIR": str(Path(td) / ".log"),
+            }
+        )
+
+        proc = run_bash(
+            """
+set -euo pipefail
+source lib/workspace_setup.sh
+msg "installer started"
+log_debug "debug detail"
+log_warn "recoverable warning"
+""",
+            env=env,
+        )
+        assert proc.returncode == 0, proc.stderr
+        log_text = (Path(td) / ".log" / "install.log").read_text(encoding="utf-8")
+        assert "INFO installer started" in log_text
+        assert "DEBUG debug detail" in log_text
+        assert "WARN recoverable warning" in log_text
+
+
 if __name__ == "__main__":
     tests = [t for name, t in sorted(globals().items()) if name.startswith("test_") and callable(t)]
     failed = 0
