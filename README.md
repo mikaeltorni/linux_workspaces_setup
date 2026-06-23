@@ -1,5 +1,7 @@
 # Linux Workspaces Setup
 
+> Part of [installation_scripts](https://github.com/mikaeltorni/installation_scripts) — the master installer that orchestrates a productivity-focused Ubuntu 24.04 desktop setup (workspaces, hotkeys, window tiling, programming tools, and more). Tested on Ubuntu 24.04.4 LTS (GNOME 46); other GNOME/Ubuntu versions untested.
+
 Ubuntu GNOME workspace behavior, numbered-workspace hotkeys, and monitor/window tiling shortcuts are owned by this repository. The old `linux_hotkey_setup` repository no longer owns these items; run this installer from the master setup chain or directly after cloning its sibling repos.
 
 ## Repository dependencies
@@ -51,10 +53,10 @@ Edit `$HOME/.config/linux-workspaces-setup/workspace-bindings.conf` before runni
 
 ```bash
 mkdir -p "$HOME/.config/linux-workspaces-setup"
-cp /home/mk/projects/linux_workspaces_setup/configs/workspace-bindings.conf.example \
+cp ~/projects/linux_workspaces_setup/configs/workspace-bindings.conf.example \
   "$HOME/.config/linux-workspaces-setup/workspace-bindings.conf"
 # Edit only the WORKSPACE_*_BINDINGS lines.
-sudo bash /home/mk/projects/linux_workspaces_setup/install.sh
+sudo bash ~/projects/linux_workspaces_setup/install.sh
 ```
 
 The config format is `INDEX:ACCELERATOR` entries separated by `|`:
