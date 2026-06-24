@@ -59,13 +59,19 @@ cp ~/projects/linux_workspaces_setup/configs/workspace-bindings.conf.example \
 sudo bash ~/projects/linux_workspaces_setup/install.sh
 ```
 
-The config format is `INDEX:ACCELERATOR` entries separated by `|`:
+The config format is `INDEX:ACCELERATOR` entries separated by `|`. Accelerators
+accept either the friendly `super+z` form you can just type, or GNOME's native
+`<Super>z` form — both are equivalent. Modifier names are case-insensitive:
+`super`/`win`, `ctrl`/`control`, `alt`, `shift`, `meta`, `hyper`. Bare keysyms
+like `Print`, `Tab`, or `aring` (the Å key) need no modifier:
 
 ```bash
-WORKSPACE_SWITCH_BINDINGS='1:<Super>Z|2:<Super>X'
-WORKSPACE_MOVE_BINDINGS='1:<Super><Shift>z|2:<Super><Shift>x'
-SUPER_ARROW_MOVE_BINDINGS='move-to-workspace-left:<Super><Shift>Left'
-OVERVIEW_BINDINGS='<Super>F9'
+WORKSPACE_SWITCH_BINDINGS='1:super+z|2:super+x'
+WORKSPACE_MOVE_BINDINGS='1:super+shift+z|2:super+shift+x'
+SUPER_ARROW_MOVE_BINDINGS='move-to-workspace-left:super+shift+Left'
+OVERVIEW_BINDINGS='super+F9'
+# Albert launcher toggle (default is the Å key):
+ALBERT_TOGGLE_BINDING='super+space'
 ```
 
 If you omit an index up to `WORKSPACE_COUNT`, that workspace's switch/move keys remain empty. The extension derives its no-switch `<Control>` variants and Super+U send-mode target keys from the same configured switch/move maps. If a selected accelerator is still used by Ubuntu/GNOME/Tiling Assistant, run the explicit cleanup command as the target user:

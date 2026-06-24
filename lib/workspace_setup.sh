@@ -257,6 +257,61 @@ accelerator_with_control() {
   printf '<Control>%s\n' "$accelerator"
 }
 
+# normalize_accelerator ACCEL - convert a friendly "super+shift+z" style
+# accelerator into GNOME's gsettings "<Super><Shift>z" form. Values already in
+# the angle-bracket form (containing "<"), empty values, and bare keysyms with
+# no "+" separator are returned unchanged, so this is safe to apply to any
+# configured binding regardless of which form the user typed.
+normalize_accelerator() {
+  local accel="$1"
+  if [ -z "$accel" ] || [[ "$accel" == *"<"* ]] || [[ "$accel" != *"+"* ]]; then
+    printf '%s\n' "$accel"
+    return 0
+  fi
+  local -a parts
+  local old_ifs="$IFS"
+  IFS='+' read -r -a parts <<< "$accel"
+  IFS="$old_ifs"
+  local out="" token i n="${#parts[@]}"
+  for ((i = 0; i < n - 1; i++)); do
+    token="${parts[i]}"
+    case "${token,,}" in
+      super|win|cmd) out+="<Super>" ;;
+      meta) out+="<Meta>" ;;
+      ctrl|control) out+="<Control>" ;;
+      alt) out+="<Alt>" ;;
+      shift) out+="<Shift>" ;;
+      hyper) out+="<Hyper>" ;;
+      *) out+="<${token^}>" ;;
+    esac
+  done
+  printf '%s%s\n' "$out" "${parts[n-1]}"
+}
+
+# normalize_accelerator_list ARRAY_NAME - normalize each element of a pure
+# accelerator array in place (overview/screenshot lists).
+normalize_accelerator_list() {
+  local -n _arr="$1"
+  local i
+  for i in "${!_arr[@]}"; do
+    _arr[i]="$(normalize_accelerator "${_arr[i]}")"
+  done
+}
+
+# normalize_indexed_binding_list ARRAY_NAME - normalize the accelerator part of
+# each "prefix:accelerator" entry in place (workspace switch/move/super-arrow
+# maps), leaving the prefix untouched.
+normalize_indexed_binding_list() {
+  local -n _arr="$1"
+  local i prefix rest
+  for i in "${!_arr[@]}"; do
+    [[ "${_arr[i]}" == *:* ]] || continue
+    prefix="${_arr[i]%%:*}"
+    rest="${_arr[i]#*:}"
+    _arr[i]="${prefix}:$(normalize_accelerator "$rest")"
+  done
+}
+
 configure_workspace_send_extension_bindings() {
   ensure_workspace_binding_arrays
 
