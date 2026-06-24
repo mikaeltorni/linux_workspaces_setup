@@ -5,6 +5,7 @@ This repository owns Ubuntu/GNOME workspace behavior and hotkeys split from the 
 - numbered workspace accelerators, screenshot keys, Albert launcher keybindings, overview settings, and unused-key clearing;
 - monitor/window tiling GNOME Shell extension deployment plus conflict cleanup for Super+Up/Down tile bindings;
 - Ctrl+Back window-tiling service wiring;
+- the xmousepasteblock primary-clipboard-lock user service (middle-click paste block);
 - numbered-workspace popup GNOME Shell extension;
 - app-rules workspace/sticky rules extension owned from the old configuration setup repository; and
 - auto-move-windows placement where it is available, with app-rules as fallback.
