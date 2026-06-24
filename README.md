@@ -135,8 +135,10 @@ or none, and **Enter** installs the selection. Components:
 | `automatic_window_tiling` | Automatic same-app window tiling | on |
 | `ctrl_back_tiler` | Ctrl+Back window tiler service | on |
 | `workspace_popup` | Numbered workspace popup extension | on |
+| `albert` | Albert launcher toggle binding | on |
 | `app_rules` | App-to-workspace window rules extension | on |
 | `auto_move_windows` | Auto-move-windows workspace placement | on |
+| `primary_paste_block` | Block middle-click primary paste (xmousepasteblock) | on |
 
 
 ## Disclaimer

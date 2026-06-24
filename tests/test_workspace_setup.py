@@ -155,6 +155,134 @@ configure_workspace_send_extension_bindings >/dev/null 2>&1
         assert "send-active-window-to-workspace-2 ['<Control><Super><Shift>X']" in log_text
 
 
+def test_friendly_accelerators_are_normalized_to_gsettings_form():
+    proc = run_bash(
+        """
+set -euo pipefail
+TARGET_USER=$(id -un)
+TARGET_HOME=/tmp/linux-workspaces-test-home
+source lib/workspace_setup.sh
+normalize_accelerator 'super+z'
+normalize_accelerator 'ctrl+alt+t'
+normalize_accelerator 'super+shift+Left'
+normalize_accelerator '<Super><Shift>R'
+normalize_accelerator 'Print'
+normalize_accelerator 'aring'
+normalize_accelerator ''
+"""
+    )
+    assert proc.returncode == 0, proc.stderr
+    lines = proc.stdout.splitlines()
+    assert lines[0] == "<Super>z"
+    assert lines[1] == "<Control><Alt>t"
+    assert lines[2] == "<Super><Shift>Left"
+    assert lines[3] == "<Super><Shift>R"
+    assert lines[4] == "Print"
+    assert lines[5] == "aring"
+    assert lines[6] == ""
+
+
+def test_friendly_workspace_bindings_apply_as_gsettings_form():
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td) / "home"
+        bin_dir = Path(td) / "bin"
+        log_path = Path(td) / "gsettings.log"
+        home.mkdir()
+        bin_dir.mkdir()
+
+        fake_gsettings = bin_dir / "gsettings"
+        fake_gsettings.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' \"$*\" >> {str(log_path)!r}\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        fake_gsettings.chmod(0o755)
+
+        env = os.environ.copy()
+        env.update(
+            {
+                "PATH": f"{bin_dir}:{env.get('PATH', '')}",
+                "TARGET_USER": os.environ["USER"],
+                "TARGET_HOME": str(home),
+                "CONFIG_DIR": str(ROOT_DIR / "configs"),
+                "WORKSPACE_SWITCH_BINDINGS": "1:super+z|2:super+x",
+            }
+        )
+
+        proc = run_bash(
+            """
+set -euo pipefail
+source lib/workspace_setup.sh
+configure_workspace_keys >/dev/null 2>&1
+""",
+            env=env,
+        )
+        assert proc.returncode == 0, proc.stderr
+        lines = log_path.read_text(encoding="utf-8").splitlines()
+        assert any("switch-to-workspace-1 ['<Super>z']" in line for line in lines)
+        assert any("switch-to-workspace-2 ['<Super>x']" in line for line in lines)
+
+
+def test_albert_and_paste_block_components_exist():
+    proc = run_bash(
+        """
+set -euo pipefail
+TARGET_USER=$(id -un)
+TARGET_HOME=/tmp/linux-workspaces-test-home
+source lib/workspace_setup.sh
+declare -F configure_albert_keybindings configure_primary_paste_block >/dev/null
+"""
+    )
+    assert proc.returncode == 0, proc.stderr
+    components = (ROOT_DIR / "installer" / "components.sh").read_text(encoding="utf-8")
+    assert "albert|Albert launcher toggle binding|on|configure_albert_keybindings" in components
+    assert "primary_paste_block|Block middle-click primary paste|on|configure_primary_paste_block" in components
+
+
+def test_albert_binding_uses_configured_accelerator():
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td) / "home"
+        bin_dir = Path(td) / "bin"
+        log_path = Path(td) / "gsettings.log"
+        home.mkdir()
+        bin_dir.mkdir()
+
+        fake_gsettings = bin_dir / "gsettings"
+        fake_gsettings.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' \"$*\" >> {str(log_path)!r}\n"
+            "case \" $* \" in *' get '*) printf '%s\\n' '[]';; esac\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        fake_gsettings.chmod(0o755)
+
+        env = os.environ.copy()
+        env.update(
+            {
+                "PATH": f"{bin_dir}:{env.get('PATH', '')}",
+                "TARGET_USER": os.environ["USER"],
+                "TARGET_HOME": str(home),
+                "CONFIG_DIR": str(ROOT_DIR / "configs"),
+                "ALBERT_TOGGLE_BINDING": "super+space",
+            }
+        )
+
+        proc = run_bash(
+            """
+set -euo pipefail
+source lib/workspace_setup.sh
+configure_albert_keybindings >/dev/null 2>&1
+""",
+            env=env,
+        )
+        assert proc.returncode == 0, proc.stderr
+        log_text = log_path.read_text(encoding="utf-8")
+        assert "binding '<Super>space'" in log_text
+        assert "command 'albert toggle'" in log_text
+
+
 def test_workspace_assets_and_delegation_are_present():
     assert (ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/extension.js").is_file()
     assert (ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/gsettings-strv.py").is_file()

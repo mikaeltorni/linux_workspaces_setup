@@ -23,6 +23,13 @@ WORKSPACE_SETUP_CONFIG_DIR="$WORKSPACE_SETUP_DIR/configs"
 : "${AUTOMATIC_WINDOW_TILING_DIR:=$SCRIPT_DIR/../linux_automatic_window_tiling}"
 AUTOMATIC_WINDOW_TILING_BINDING="${AUTOMATIC_WINDOW_TILING_BINDING:-<Super>t}"
 
+# Albert launcher toggle. The binding accepts both the friendly "super+z" form
+# and GNOME's native "<Super>z" form; bare keysyms such as the default 'aring'
+# (the Å key) pass through unchanged.
+: "${ALBERT_TOGGLE_BINDING:=aring}"
+: "${ALBERT_TOGGLE_COMMAND:=albert toggle}"
+: "${ALBERT_TOGGLE_NAME:=Albert Toggle}"
+
 DEFAULT_SCREENSHOT_UI_BINDINGS=("<Shift><Super>s")
 DEFAULT_SCREENSHOT_QUICK_BINDINGS=("Print")
 DEFAULT_OVERVIEW_BINDINGS=("<Super>Tab")
@@ -218,6 +225,16 @@ ensure_workspace_binding_arrays() {
   if ! declare -p SCREENSHOT_QUICK_BINDINGS_ARRAY >/dev/null 2>&1; then
     parse_pipe_binding_entries "${SCREENSHOT_QUICK_BINDINGS:-}" "|" SCREENSHOT_QUICK_BINDINGS_ARRAY DEFAULT_SCREENSHOT_QUICK_BINDINGS
   fi
+
+  # Accept the friendly "super+z" form for every configured binding by
+  # normalizing each array to GNOME's "<Super>z" form. Idempotent: values
+  # already in angle-bracket form pass through unchanged.
+  normalize_indexed_binding_list WORKSPACE_SWITCH_BINDINGS_ARRAY
+  normalize_indexed_binding_list WORKSPACE_MOVE_BINDINGS_ARRAY
+  normalize_indexed_binding_list SUPER_ARROW_MOVE_BINDINGS_ARRAY
+  normalize_accelerator_list OVERVIEW_BINDINGS_ARRAY
+  normalize_accelerator_list SCREENSHOT_UI_BINDINGS_ARRAY
+  normalize_accelerator_list SCREENSHOT_QUICK_BINDINGS_ARRAY
 }
 
 set_indexed_keybinding_map() {
@@ -726,17 +743,64 @@ configure_auto_move_windows() {
   fi
 }
 
+configure_albert_keybindings() {
+  msg "Configuring Albert launcher keybindings"
+  local path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/albert-aring/"
+  local binding
+  binding="$(normalize_accelerator "$ALBERT_TOGGLE_BINDING")"
+  append_gsettings_list org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$path"
+  user_gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:"$path" name "'$ALBERT_TOGGLE_NAME'"
+  user_gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:"$path" command "'$ALBERT_TOGGLE_COMMAND'"
+  user_gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:"$path" binding "'$binding'"
+}
+
+# configure_primary_paste_block - install the xmousepasteblock user service that
+# locks the X11 PRIMARY selection so a middle-click does not paste. The binary is
+# provided by linux_installations_setup; if it is absent the service is skipped
+# rather than failing the install.
+configure_primary_paste_block() {
+  msg "Configuring primary clipboard lock (xmousepasteblock)"
+  local bin_path="$TARGET_HOME/.local/bin/xmousepasteblock"
+  local service_file="$TARGET_HOME/.config/systemd/user/xmousepasteblock.service"
+
+  if [ ! -x "$bin_path" ]; then
+    msg "xmousepasteblock binary not found at $bin_path; primary clipboard lock service skipped."
+    return 0
+  fi
+
+  run_as_target mkdir -p "$(dirname "$service_file")"
+  run_as_target tee "$service_file" >/dev/null <<EOF
+[Unit]
+Description=xmousepasteblock - lock primary clipboard selection
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=$bin_path
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOF
+  reload_systemd_daemon
+  enable_systemd_service xmousepasteblock.service
+  run_as_target systemctl --user start xmousepasteblock.service || true
+}
+
 configure_ubuntu_workspaces_and_hotkeys() {
   msg "Applying Ubuntu workspace setup"
   select_input_device || true
   configure_screenshot_binding
   configure_workspace_keys
+  configure_albert_keybindings
   configure_monitor_window_hotkeys_extension
   configure_automatic_window_tiling
   configure_ctrl_back_window_tiler_service
   configure_workspace_number_popup_extension
   configure_app_rules_extension
   configure_auto_move_windows
+  configure_primary_paste_block
   report_sudo_required
   msg "Ubuntu workspace setup complete. Log out and back in before testing GNOME Shell extension changes."
 }
