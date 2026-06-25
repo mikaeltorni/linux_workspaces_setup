@@ -36,6 +36,7 @@ declare -F isc_load_helpers >/dev/null 2>&1 || \
 isc_load_helpers
 
 source "$SCRIPT_DIR/lib/workspace_setup.sh"
+source "$SCRIPT_DIR/lib/lifecycle.sh"
 
 if [ -f "${WORKSPACE_BINDING_CONFIG:-$CONFIG_DIR/workspace-bindings.conf}" ] && \
    [ "${SKIP_WORKSPACE_BINDING_CONFIG:-0}" != "1" ]; then
@@ -68,7 +69,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   # Listing/help must print only their own output (the master installer parses
   # --list-components); bypass the surrounding messages for those.
   case "${1:-}" in
-    --list-components|--help|-h) component_main "$@"; exit $? ;;
+    --list-components|--detect|--help|-h|--uninstall|--uninstall=*) component_main "$@"; exit $? ;;
   esac
   main "$@"
 fi

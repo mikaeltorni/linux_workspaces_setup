@@ -721,11 +721,41 @@ install_auto_move_windows_extension() {
   local ext_id="auto-move-windows@gnome-shell-extensions.gcampax.github.com"
   local ext_dir="$TARGET_HOME/.local/share/gnome-shell/extensions/$ext_id"
   local system_ext_dir="/usr/share/gnome-shell/extensions/$ext_id"
-  [ -d "$ext_dir" ] || [ -d "$system_ext_dir" ] && return 0
+  if { [ -d "$ext_dir" ] && [ -f "$ext_dir/metadata.json" ]; } \
+     || { [ -d "$system_ext_dir" ] && [ -f "$system_ext_dir/metadata.json" ]; }; then
+    return 0
+  fi
+  # Prefer the packaged extension when it exists.
   if is_root && apt-cache show gnome-shell-extension-auto-move-windows >/dev/null 2>&1; then
     apt_install gnome-shell-extension-auto-move-windows || true
+    { [ -d "$system_ext_dir" ] || [ -d "$ext_dir" ]; } && return 0
   fi
-  [ -d "$ext_dir" ] || [ -d "$system_ext_dir" ]
+  # Ubuntu 24.04 has no separate apt package, so fall back to building it from the
+  # matching gnome-shell-extensions branch (moved here from the taskbar repo so
+  # workspaces_setup, the owner, can fully provision the extension on its own).
+  local shell_major branch tmpdir src repo
+  shell_major="$(run_as_target gnome-shell --version 2>/dev/null | grep -oE '[0-9]+' | head -n1 || true)"
+  shell_major="${shell_major:-46}"
+  branch="gnome-${shell_major}"
+  apt_install git
+  tmpdir="$(mktemp -d)"
+  for repo in \
+    "${AUTO_MOVE_WINDOWS_GIT_URL:-https://gitlab.gnome.org/GNOME/gnome-shell-extensions.git}" \
+    "https://github.com/GNOME/gnome-shell-extensions.git"; do
+    if git clone --depth 1 --branch "$branch" "$repo" "$tmpdir/gse" 2>/dev/null; then
+      src="$tmpdir/gse/extensions/$ext_id"
+      if [ -d "$src" ]; then
+        run_as_target mkdir -p "$(dirname "$ext_dir")"
+        run_as_target rm -rf "$ext_dir"
+        run_as_target cp -a "$src" "$ext_dir"
+        run_as_target chown -R "$TARGET_USER:$TARGET_USER" "$ext_dir" 2>/dev/null || true
+        rm -rf "$tmpdir"
+        return 0
+      fi
+    fi
+  done
+  rm -rf "$tmpdir"
+  { [ -d "$ext_dir" ] || [ -d "$system_ext_dir" ]; }
 }
 
 configure_auto_move_windows() {
