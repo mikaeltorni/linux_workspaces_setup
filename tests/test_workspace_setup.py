@@ -110,6 +110,78 @@ configure_workspace_keys >/dev/null 2>&1
         assert "<Super>Up" not in tile_max_lines[0]
 
 
+def test_detect_workspace_keys_requires_configured_bindings():
+    """GNOME default workspace bindings must not count as installed."""
+    env = os.environ.copy()
+    env.update(
+        {
+            "TARGET_USER": os.environ["USER"],
+            "TARGET_HOME": "/tmp/linux-workspaces-test-home",
+            "CONFIG_DIR": str(ROOT_DIR / "configs"),
+            "WORKSPACE_SWITCH_BINDINGS": "1:<Super>Z|2:<Super>X",
+            "WORKSPACE_MOVE_BINDINGS": "1:<Super><Shift>Z|2:<Super><Shift>X",
+        }
+    )
+    proc = run_bash(
+        """
+set -euo pipefail
+source lib/workspace_setup.sh
+source lib/lifecycle.sh
+run_as_target() {
+  if [ "$1" = gsettings ] && [ "$2" = get ]; then
+    case "$3 $4" in
+      'org.gnome.desktop.wm.keybindings switch-to-workspace-1') printf "['<Super>1']\\n" ;;
+      'org.gnome.desktop.wm.keybindings move-to-workspace-1') printf "[]\\n" ;;
+      'org.gnome.desktop.wm.keybindings switch-to-workspace-2') printf "[]\\n" ;;
+      'org.gnome.desktop.wm.keybindings move-to-workspace-2') printf "[]\\n" ;;
+      *) printf "[]\\n" ;;
+    esac
+  fi
+}
+if detect_workspace_keys; then exit 1; fi
+""",
+        env=env,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+
+
+def test_detect_workspace_keys_accepts_configured_bindings():
+    """Workspace detection succeeds when every configured switch/move key matches."""
+    env = os.environ.copy()
+    env.update(
+        {
+            "TARGET_USER": os.environ["USER"],
+            "TARGET_HOME": "/tmp/linux-workspaces-test-home",
+            "CONFIG_DIR": str(ROOT_DIR / "configs"),
+            "WORKSPACE_SWITCH_BINDINGS": "1:<Super>Z|2:<Super>X",
+            "WORKSPACE_MOVE_BINDINGS": "1:<Super><Shift>Z|2:<Super><Shift>X",
+        }
+    )
+    proc = run_bash(
+        """
+set -euo pipefail
+source lib/workspace_setup.sh
+source lib/lifecycle.sh
+run_as_target() {
+  if [ "$1" = gsettings ] && [ "$2" = get ]; then
+    case "$3 $4" in
+      'org.gnome.desktop.wm.keybindings switch-to-workspace-1') printf "['<Super>Z']\\n" ;;
+      'org.gnome.desktop.wm.keybindings move-to-workspace-1') printf "['<Super><Shift>Z']\\n" ;;
+      'org.gnome.desktop.wm.keybindings switch-to-workspace-2') printf "['<Super>X']\\n" ;;
+      'org.gnome.desktop.wm.keybindings move-to-workspace-2') printf "['<Super><Shift>X']\\n" ;;
+      *) printf "[]\\n" ;;
+    esac
+  fi
+}
+detect_workspace_keys
+""",
+        env=env,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+
+
 def test_workspace_send_extension_bindings_are_derived_from_workspace_config():
     with tempfile.TemporaryDirectory() as td:
         home = Path(td) / "home"

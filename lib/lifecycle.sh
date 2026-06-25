@@ -32,10 +32,33 @@ ws_delegate() {
   local dir="$TARGET_HOME/projects/$1"
   [ -f "$dir/install.sh" ] && run_as_target bash "$dir/install.sh" "${@:2}" || true
 }
+ws_strv_is_single() {
+  local actual="$1" expected="$2"
+  [[ "$actual" == "['$expected']" ]]
+}
+ws_binding_matches() {
+  local schema="$1" key="$2" expected="$3" actual
+  actual="$(run_as_target gsettings get "$schema" "$key" 2>/dev/null || true)"
+  ws_strv_is_single "$actual" "$expected"
+}
 
 # --- Detection ---------------------------------------------------------------
 detect_screenshot()              { ws_mediakeys_has 'custom-screenshot'; }
-detect_workspace_keys()          { local v; v="$(run_as_target gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-1 2>/dev/null)"; [ -n "$v" ] && [ "$v" != "@as []" ] && [ "$v" != "[]" ]; }
+detect_workspace_keys() {
+  ensure_workspace_binding_arrays
+  local entry idx binding
+  for entry in "${WORKSPACE_SWITCH_BINDINGS_ARRAY[@]}"; do
+    idx="${entry%%:*}"
+    binding="${entry#*:}"
+    ws_binding_matches org.gnome.desktop.wm.keybindings "switch-to-workspace-$idx" "$binding" || return 1
+  done
+  for entry in "${WORKSPACE_MOVE_BINDINGS_ARRAY[@]}"; do
+    idx="${entry%%:*}"
+    binding="${entry#*:}"
+    ws_binding_matches org.gnome.desktop.wm.keybindings "move-to-workspace-$idx" "$binding" || return 1
+  done
+  return 0
+}
 detect_albert()                  { ws_mediakeys_has 'albert-aring'; }
 detect_monitor_window_hotkeys()  { [ -d "$(ws_ext_dir monitor-window-hotkeys@local)" ]; }
 detect_automatic_window_tiling() { [ -d "$(ws_ext_dir automatic-window-tiling@local)" ]; }
