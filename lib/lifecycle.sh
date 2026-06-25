@@ -34,7 +34,7 @@ ws_delegate() {
 }
 ws_strv_is_single() {
   local actual="$1" expected="$2"
-  [[ "$actual" == "['$expected']" ]]
+  [[ "${actual,,}" == "['${expected,,}']" ]]
 }
 ws_binding_matches() {
   local schema="$1" key="$2" expected="$3" actual
@@ -43,7 +43,11 @@ ws_binding_matches() {
 }
 
 # --- Detection ---------------------------------------------------------------
-detect_screenshot()              { ws_mediakeys_has 'custom-screenshot'; }
+detect_screenshot() {
+  ensure_workspace_binding_arrays
+  ws_binding_matches org.gnome.shell.keybindings show-screenshot-ui "${SCREENSHOT_UI_BINDINGS_ARRAY[0]}" &&
+    ws_binding_matches org.gnome.shell.keybindings screenshot "${SCREENSHOT_QUICK_BINDINGS_ARRAY[0]}"
+}
 detect_workspace_keys() {
   ensure_workspace_binding_arrays
   local entry idx binding
@@ -65,7 +69,12 @@ detect_automatic_window_tiling() { [ -d "$(ws_ext_dir automatic-window-tiling@lo
 detect_ctrl_back_tiler()         { [ -f "$TARGET_HOME/.config/systemd/user/ctrl-back-window-tiler.service" ]; }
 detect_workspace_popup()         { [ -d "$(ws_ext_dir workspace-number-indicator@local)" ]; }
 detect_app_rules()               { [ -d "$(ws_ext_dir app-rules@local)" ]; }
-detect_auto_move_windows()       { local v; v="$(run_as_target gsettings get org.gnome.shell.extensions.auto-move-windows application-list 2>/dev/null)"; [ -n "$v" ] && [ "$v" != "@as []" ] && [ "$v" != "[]" ]; }
+detect_auto_move_windows() {
+  local v
+  v="$(run_as_target gsettings get org.gnome.shell.extensions.auto-move-windows application-list 2>/dev/null)" &&
+    [ -n "$v" ] && [ "$v" != "@as []" ] && [ "$v" != "[]" ] && return 0
+  [ -d "$(ws_ext_dir app-rules@local)" ]
+}
 detect_primary_paste_block()     { [ -f "$TARGET_HOME/.config/systemd/user/xmousepasteblock.service" ]; }
 
 # --- Uninstall ---------------------------------------------------------------
