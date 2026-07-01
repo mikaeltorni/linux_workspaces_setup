@@ -153,6 +153,34 @@ configure_workspace_send_extension_bindings >/dev/null 2>&1
         assert "send-active-window-to-workspace-2 ['<Control><Super><Shift>X']" in log_text
 
 
+def test_workspace_extension_imports_typed_hotkey_fields(tmp_path):
+    """Extension mappings follow the hotkey repo's switch fields and modifier."""
+    config = tmp_path / "workspace-hotkeys.conf"
+    config.write_text(
+        "WORKSPACE_SWITCH_1=<Alt>q\nWORKSPACE_SWITCH_2=<Super>x\n"
+        "WORKSPACE_MOVE_MODIFIER=Control\n",
+        encoding="utf-8",
+    )
+    proc = run_bash(
+        f"""
+set -euo pipefail
+TARGET_USER=$(id -un)
+TARGET_HOME={str(tmp_path)!r}
+WORKSPACE_COUNT=2
+WORKSPACE_HOTKEY_CONFIG={str(config)!r}
+source {str(ROOT_DIR.parent / 'linux_installation_scripts_functions' / 'hotkey_capture.sh')!r}
+source lib/workspace_setup.sh
+load_hotkey_workspace_binding_config
+printf '%s\n' "$WORKSPACE_SWITCH_BINDINGS" "$WORKSPACE_MOVE_BINDINGS"
+"""
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.splitlines() == [
+        "1:<Alt>q|2:<Super>x",
+        "1:<Control><Alt>q|2:<Control><Super>x",
+    ]
+
+
 def test_friendly_accelerators_are_normalized_to_gsettings_form():
     proc = run_bash(
         """

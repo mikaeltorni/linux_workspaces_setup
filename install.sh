@@ -52,6 +52,8 @@ if [ -f "${WORKSPACE_BINDING_CONFIG:-$CONFIG_DIR/workspace-bindings.conf}" ] && 
   . "${WORKSPACE_BINDING_CONFIG:-$CONFIG_DIR/workspace-bindings.conf}"
 fi
 
+load_hotkey_workspace_binding_config
+
 parse_pipe_binding_entries \
   "${WORKSPACE_SWITCH_BINDINGS:-}" "|" WORKSPACE_SWITCH_BINDINGS_ARRAY DEFAULT_WORKSPACE_SWITCH_BINDINGS
 parse_pipe_binding_entries \

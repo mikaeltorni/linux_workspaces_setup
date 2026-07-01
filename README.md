@@ -55,7 +55,10 @@ These defaults intentionally avoid Ubuntu/GNOME Tiling Assistant half-screen til
 
 ## Configure extension workspace mappings
 
-Edit `$HOME/.config/linux-workspaces-setup/workspace-bindings.conf` before running the installer:
+By default, extension workspace mappings import the typed fields from
+`$HOME/.config/linux-hotkey-setup/workspace-hotkeys.conf`, including the shared
+move modifier. To override only the extension mappings, create the legacy
+workspace-specific file before running the installer:
 
 ```bash
 mkdir -p "$HOME/.config/linux-workspaces-setup"

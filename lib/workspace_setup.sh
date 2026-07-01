@@ -49,6 +49,30 @@ DEFAULT_WORKSPACE_MOVE_BINDINGS=(
   "7:<Super><Shift>E"
   "8:<Super><Shift>R"
 )
+
+# load_hotkey_workspace_binding_config — Import the hotkey repository's typed
+# switch fields and shared move modifier so extension-only send actions stay in
+# sync. Explicit WORKSPACE_SWITCH/MOVE_BINDINGS values remain authoritative.
+load_hotkey_workspace_binding_config() {
+  declare -F isc_hotkey_field_value >/dev/null 2>&1 || return 0
+  local config="${WORKSPACE_HOTKEY_CONFIG:-$TARGET_HOME/.config/linux-hotkey-setup/workspace-hotkeys.conf}"
+  local modifier index entry default_value switch_value move_value
+  modifier="$(isc_hotkey_field_value "$config" WORKSPACE_MOVE_MODIFIER Shift)"
+  local switches="" moves=""
+  for ((index = 1; index <= WORKSPACE_COUNT; index++)); do
+    default_value=""
+    for entry in "${DEFAULT_WORKSPACE_SWITCH_BINDINGS[@]}"; do
+      [[ "${entry%%:*}" == "$index" ]] && { default_value="${entry#*:}"; break; }
+    done
+    switch_value="$(isc_hotkey_field_value "$config" "WORKSPACE_SWITCH_${index}" "$default_value")"
+    [[ -n "$switch_value" ]] || continue
+    switches+="${switches:+|}${index}:${switch_value}"
+    move_value="$(isc_hotkey_add_modifier "$switch_value" "$modifier" 2>/dev/null || true)"
+    [[ -n "$move_value" ]] && moves+="${moves:+|}${index}:${move_value}"
+  done
+  [[ -z "${WORKSPACE_SWITCH_BINDINGS:-}" ]] && WORKSPACE_SWITCH_BINDINGS="$switches"
+  [[ -z "${WORKSPACE_MOVE_BINDINGS:-}" ]] && WORKSPACE_MOVE_BINDINGS="$moves"
+}
 # Centralized installer log. Every repository-generated log lands under the
 # repo-root .log/ directory (created on demand); messages are still echoed to
 # the console so interactive runs and the master installer see live progress.
