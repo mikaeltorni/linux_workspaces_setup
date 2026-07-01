@@ -743,11 +743,28 @@ install_auto_move_windows_extension() {
     "${AUTO_MOVE_WINDOWS_GIT_URL:-https://gitlab.gnome.org/GNOME/gnome-shell-extensions.git}" \
     "https://github.com/GNOME/gnome-shell-extensions.git"; do
     if git clone --depth 1 --branch "$branch" "$repo" "$tmpdir/gse" 2>/dev/null; then
-      src="$tmpdir/gse/extensions/$ext_id"
+      src="$tmpdir/gse/extensions/auto-move-windows"
       if [ -d "$src" ]; then
         run_as_target mkdir -p "$(dirname "$ext_dir")"
         run_as_target rm -rf "$ext_dir"
         run_as_target cp -a "$src" "$ext_dir"
+        if [ ! -f "$ext_dir/metadata.json" ] && [ -f "$ext_dir/metadata.json.in" ]; then
+          local metadata
+          metadata="$(sed \
+            -e "s|@extension_id@|auto-move-windows|g" \
+            -e "s|@uuid@|$ext_id|g" \
+            -e 's|@gschemaname@|org.gnome.shell.extensions.auto-move-windows|g' \
+            -e 's|@gettext_domain@|gnome-shell-extensions|g' \
+            -e "s|@shell_current@|$shell_major|g" \
+            -e 's|@url@|https://gitlab.gnome.org/GNOME/gnome-shell-extensions|g' \
+            "$ext_dir/metadata.json.in")"
+          printf '%s\n' "$metadata" | run_as_target tee "$ext_dir/metadata.json" >/dev/null
+        fi
+        if [ -f "$ext_dir/org.gnome.shell.extensions.auto-move-windows.gschema.xml" ]; then
+          run_as_target mkdir -p "$ext_dir/schemas"
+          run_as_target cp "$ext_dir/org.gnome.shell.extensions.auto-move-windows.gschema.xml" "$ext_dir/schemas/"
+          run_as_target glib-compile-schemas "$ext_dir/schemas"
+        fi
         run_as_target chown -R "$TARGET_USER:$TARGET_USER" "$ext_dir" 2>/dev/null || true
         rm -rf "$tmpdir"
         return 0
@@ -766,10 +783,34 @@ configure_auto_move_windows() {
     return 0
   fi
   enable_shell_extension "$ext_id"
-  local gitkraken_desktop
-  gitkraken_desktop="$(first_existing_desktop gitkraken.desktop gitkraken_gitkraken.desktop)"
-  if [ -n "$gitkraken_desktop" ] && gsettings_key_exists org.gnome.shell.extensions.auto-move-windows application-list; then
-    append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${gitkraken_desktop}:2"
+  if [ -f "$TARGET_HOME/.local/share/gnome-shell/extensions/$ext_id/schemas/gschemas.compiled" ]; then
+    export GSETTINGS_SCHEMA_DIR="$TARGET_HOME/.local/share/gnome-shell/extensions/$ext_id/schemas"
+  fi
+  gsettings_key_exists org.gnome.shell.extensions.auto-move-windows application-list || return 0
+  if [[ ${MANAGED_APP_WORKSPACES+x} ]]; then
+    local group candidate workspace resolved number
+    local -a managed_groups=() selected_groups=() candidates=()
+    IFS=';' read -r -a managed_groups <<< "${MANAGED_APP_WORKSPACES:-}"
+    for group in "${managed_groups[@]}"; do
+      for candidate in ${group//|/ }; do
+        for number in {1..9}; do
+          remove_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${candidate}:${number}"
+        done
+      done
+    done
+    IFS=';' read -r -a selected_groups <<< "${SELECTED_APP_WORKSPACES:-}"
+    for group in "${selected_groups[@]}"; do
+      workspace="${group##*=}"
+      group="${group%=*}"
+      [[ "$workspace" =~ ^[1-9]$ ]] || continue
+      IFS='|' read -r -a candidates <<< "$group"
+      resolved="$(first_existing_desktop "${candidates[@]}")"
+      [[ -n "$resolved" ]] && append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${resolved}:${workspace}"
+    done
+  else
+    local gitkraken_desktop
+    gitkraken_desktop="$(first_existing_desktop gitkraken.desktop gitkraken_gitkraken.desktop)"
+    [[ -n "$gitkraken_desktop" ]] && append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${gitkraken_desktop}:2"
   fi
 }
 

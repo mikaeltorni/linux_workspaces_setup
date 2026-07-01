@@ -38,6 +38,13 @@ isc_load_helpers
 source "$SCRIPT_DIR/lib/workspace_setup.sh"
 source "$SCRIPT_DIR/lib/lifecycle.sh"
 
+list_selected_app_workspaces() {
+  local schema_dir="$TARGET_HOME/.local/share/gnome-shell/extensions/auto-move-windows@gnome-shell-extensions.gcampax.github.com/schemas"
+  [[ -f "$schema_dir/gschemas.compiled" ]] && export GSETTINGS_SCHEMA_DIR="$schema_dir"
+  run_as_target gsettings get org.gnome.shell.extensions.auto-move-windows application-list 2>/dev/null |
+    grep -oE "'[^']+:[1-9]'" | tr -d "'" || true
+}
+
 if [ -f "${WORKSPACE_BINDING_CONFIG:-$CONFIG_DIR/workspace-bindings.conf}" ] && \
    [ "${SKIP_WORKSPACE_BINDING_CONFIG:-0}" != "1" ]; then
   msg "Sourcing workspace binding config: ${WORKSPACE_BINDING_CONFIG:-$CONFIG_DIR/workspace-bindings.conf}"
@@ -111,6 +118,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   # Listing/help must print only their own output (the master installer parses
   # --list-components); bypass the surrounding messages for those.
   case "${1:-}" in
+    --list-selected-app-workspaces) list_selected_app_workspaces; exit $? ;;
     --list-components|--detect|--help|-h|--uninstall|--uninstall=*) component_main "$@"; exit $? ;;
   esac
   main "$@"
