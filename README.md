@@ -2,7 +2,9 @@
 
 > Part of [installation_scripts](https://github.com/mikaeltorni/installation_scripts) — the master installer that orchestrates a productivity-focused Ubuntu 24.04 desktop setup (workspaces, hotkeys, window tiling, programming tools, and more). Tested on Ubuntu 24.04.4 LTS (GNOME 46); other GNOME/Ubuntu versions untested.
 
-Ubuntu GNOME workspace behavior, numbered-workspace hotkeys, and monitor/window tiling shortcuts are owned by this repository. The old `linux_hotkey_setup` repository no longer owns these items; run this installer from the master setup chain or directly after cloning its sibling repos.
+Ubuntu GNOME workspace behavior and workspace-related extensions are owned by
+this repository. Screenshot shortcuts and numbered workspace switch/move
+accelerators are configured individually by `linux_hotkey_setup`.
 
 ## Repository dependencies
 
@@ -23,14 +25,18 @@ See the full cross-repository map in
 
 ## Ownership map
 
-- From `linux_hotkey_setup`: workspace switch/move keybindings, screenshot/Albert bindings, monitor/window hotkeys extension, numbered workspace popup, Ctrl+Back window tiler service, and xmousepasteblock clipboard-lock wiring.
+- From `linux_hotkey_setup`: Albert bindings, monitor/window hotkeys extension, numbered workspace popup, Ctrl+Back window tiler service, and xmousepasteblock clipboard-lock wiring.
+- Kept in `linux_hotkey_setup`: screenshot and numbered workspace switch/move shortcuts.
 - From `linux_configuration_setup`: app-rules GNOME Shell extension that assigns apps to workspaces or sticky windows.
 - From `ubuntu_2404_taskbar_system_status_monitor`: Window Rules/Workspace rules behavior and Auto-move-windows workspace placement configuration. The Ubuntu taskbar repository keeps the resource monitor/taskbar UI pieces only.
 - Kept separate but invoked by this repo: automatic same-application window tiling in `linux_automatic_window_tiling`.
 
 ## Default hotkeys
 
-The installer configures 8 workspaces by default. Workspace switch keys are cleared first, then filled from the configured map; unset workspace entries become empty bindings unless `WORKSPACE_CLEAR_UNUSED_BINDINGS=0` is set. GNOME's built-in `<Super><Shift>` move binding may follow the moved window; the extension also installs `<Control><Super><Shift>` variants that move the focused window without switching workspaces.
+The extension uses the same default workspace map as `linux_hotkey_setup` to
+provide `<Control><Super><Shift>` variants that move the focused window without
+switching workspaces. The primary switch/move bindings themselves are installed
+by `linux_hotkey_setup`.
 
 | Work | Switch | Move to | Send without switching |
 |---|---|---|---|
@@ -47,7 +53,7 @@ The monitor/window hotkeys extension also provides a right-click send mode: hold
 
 These defaults intentionally avoid Ubuntu/GNOME Tiling Assistant half-screen tiling shortcuts such as Super+Up/Down and Ctrl+Super+W/X/C. Known GNOME/Tiling Assistant conflicts are cleared during setup, including duplicate half-tile bindings that can steal Super+Up/Down or left/right tiling.
 
-## Configure your own hotkeys
+## Configure extension workspace mappings
 
 Edit `$HOME/.config/linux-workspaces-setup/workspace-bindings.conf` before running the installer:
 
@@ -55,7 +61,7 @@ Edit `$HOME/.config/linux-workspaces-setup/workspace-bindings.conf` before runni
 mkdir -p "$HOME/.config/linux-workspaces-setup"
 cp ~/projects/linux_workspaces_setup/configs/workspace-bindings.conf.example \
   "$HOME/.config/linux-workspaces-setup/workspace-bindings.conf"
-# Edit only the WORKSPACE_*_BINDINGS lines.
+# Keep the WORKSPACE_*_BINDINGS lines aligned with linux_hotkey_setup.
 sudo bash ~/projects/linux_workspaces_setup/install.sh
 ```
 
@@ -68,22 +74,16 @@ like `Print`, `Tab`, or `aring` (the Å key) need no modifier:
 ```bash
 WORKSPACE_SWITCH_BINDINGS='1:super+z|2:super+x'
 WORKSPACE_MOVE_BINDINGS='1:super+shift+z|2:super+shift+x'
-SUPER_ARROW_MOVE_BINDINGS='move-to-workspace-left:super+shift+Left'
-OVERVIEW_BINDINGS='super+F9'
 # Albert launcher toggle (default is the Å key):
 ALBERT_TOGGLE_BINDING='super+space'
 ```
 
-If you omit an index up to `WORKSPACE_COUNT`, that workspace's switch/move keys remain empty. The extension derives its no-switch `<Control>` variants and Super+U send-mode target keys from the same configured switch/move maps. If a selected accelerator is still used by Ubuntu/GNOME/Tiling Assistant, run the explicit cleanup command as the target user:
-
-```bash
-env DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus" DISPLAY="${DISPLAY:-:0}" \
-  gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-1 ''
-gsettings --schemadir "$HOME/.local/share/gnome-shell/extensions/monitor-window-hotkeys@local/schemas" \
-  reset-recursively org.gnome.shell.extensions.monitor-window-hotkeys
-```
-
-For third-party extension bindings, remove duplicates from that extension's own schema after the installer reports or logs a conflict. GNOME Shell extensions require a logout/login to load newly copied shell-extension files. The installer enables extensions without replacing `gnome-shell` and preserves your existing enabled-extension list.
+The extension derives its no-switch `<Control>` variants and Super+U send-mode
+target keys from these maps. Configure the primary switch/move accelerators
+through `linux_hotkey_setup`. GNOME Shell extensions require a logout/login to
+load newly copied shell-extension files. The installer enables extensions
+without replacing `gnome-shell` and preserves your existing enabled-extension
+list.
 
 ## Run tests
 
@@ -129,8 +129,6 @@ or none, and **Enter** installs the selection. Components:
 
 | Component id | Description | Default |
 |---|---|---|
-| `screenshot` | Screenshot shortcuts | on |
-| `workspace_keys` | Numbered workspace switch/move keys | on |
 | `monitor_window_hotkeys` | Monitor/window movement hotkeys extension | on |
 | `automatic_window_tiling` | Automatic same-app window tiling | on |
 | `ctrl_back_tiler` | Ctrl+Back window tiler service | on |

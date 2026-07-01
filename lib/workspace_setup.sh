@@ -17,7 +17,6 @@ WORKSPACE_SETUP_CONFIG_DIR="$WORKSPACE_SETUP_DIR/configs"
 : "${SESSION_TYPE:=${XDG_SESSION_TYPE:-unknown}}"
 : "${APT_UPDATED:=0}"
 : "${WORKSPACE_COUNT:=8}"
-: "${WORKSPACE_CLEAR_UNUSED_BINDINGS:=1}"
 : "${MONITOR_WINDOW_HOTKEYS_EXTENSION_ID:=monitor-window-hotkeys@local}"
 : "${MONITOR_WINDOW_HOTKEYS_SOURCE_DIR:=$CONFIG_DIR/gnome-shell/extensions/$MONITOR_WINDOW_HOTKEYS_EXTENSION_ID}"
 : "${AUTOMATIC_WINDOW_TILING_DIR:=$SCRIPT_DIR/../linux_automatic_window_tiling}"
@@ -30,9 +29,6 @@ AUTOMATIC_WINDOW_TILING_BINDING="${AUTOMATIC_WINDOW_TILING_BINDING:-<Super>t}"
 : "${ALBERT_TOGGLE_COMMAND:=albert toggle}"
 : "${ALBERT_TOGGLE_NAME:=Albert Toggle}"
 
-DEFAULT_SCREENSHOT_UI_BINDINGS=("<Shift><Super>s")
-DEFAULT_SCREENSHOT_QUICK_BINDINGS=("Print")
-DEFAULT_OVERVIEW_BINDINGS=("<Super>Tab")
 DEFAULT_WORKSPACE_SWITCH_BINDINGS=(
   "1:<Super>Z"
   "2:<Super>X"
@@ -53,30 +49,6 @@ DEFAULT_WORKSPACE_MOVE_BINDINGS=(
   "7:<Super><Shift>E"
   "8:<Super><Shift>R"
 )
-DEFAULT_SUPER_ARROW_MOVE_BINDINGS=(
-  "move-to-workspace-left:<Super><Shift>Left"
-  "move-to-workspace-right:<Super><Shift>Right"
-  "move-to-workspace-down:<Super><Shift>Down"
-  "move-to-workspace-up:<Super><Shift>Up"
-)
-
-WM_CONFLICT_UNBINDINGS=(
-  "minimize:<Alt><Super>R"
-  "maximize:<Super>Up"
-  "unmaximize:<Super>Down"
-  "minimize:<Super>Down"
-)
-TILING_CONFLICT_UNBINDINGS=(
-  "tile-maximize:<Super>Up"
-  "tile-top-half:<Control><Super>X"
-  "tile-top-half:<Super>Up"
-  "tile-bottom-half:<Control><Super>W"
-  "tile-bottom-half:<Super>Down"
-  "tile-left-half:<Control><Super>C"
-  "tile-left-half:<Super>Left"
-  "tile-right-half:<Super>Right"
-)
-
 # Centralized installer log. Every repository-generated log lands under the
 # repo-root .log/ directory (created on demand); messages are still echoed to
 # the console so interactive runs and the master installer see live progress.
@@ -158,14 +130,6 @@ gsettings_key_exists() {
   run_as_target gsettings list-keys "$schema" 2>/dev/null | grep -qx "$key"
 }
 
-set_gsettings_strv_if_key_exists() {
-  local schema="$1" key="$2"
-  shift 2
-  if gsettings_key_exists "$schema" "$key"; then
-    set_gsettings_strv "$schema" "$key" "$@"
-  fi
-}
-
 append_gsettings_list() {
   local schema="$1" key="$2" value="$3" current new_value
   if ! current="$(user_gsettings get "$schema" "$key" 2>/dev/null)"; then
@@ -213,56 +177,12 @@ ensure_workspace_binding_arrays() {
   if ! declare -p WORKSPACE_MOVE_BINDINGS_ARRAY >/dev/null 2>&1; then
     parse_pipe_binding_entries "${WORKSPACE_MOVE_BINDINGS:-}" "|" WORKSPACE_MOVE_BINDINGS_ARRAY DEFAULT_WORKSPACE_MOVE_BINDINGS
   fi
-  if ! declare -p SUPER_ARROW_MOVE_BINDINGS_ARRAY >/dev/null 2>&1; then
-    parse_pipe_binding_entries "${SUPER_ARROW_MOVE_BINDINGS:-}" "|" SUPER_ARROW_MOVE_BINDINGS_ARRAY DEFAULT_SUPER_ARROW_MOVE_BINDINGS
-  fi
-  if ! declare -p OVERVIEW_BINDINGS_ARRAY >/dev/null 2>&1; then
-    parse_pipe_binding_entries "${OVERVIEW_BINDINGS:-}" "|" OVERVIEW_BINDINGS_ARRAY DEFAULT_OVERVIEW_BINDINGS
-  fi
-  if ! declare -p SCREENSHOT_UI_BINDINGS_ARRAY >/dev/null 2>&1; then
-    parse_pipe_binding_entries "${SCREENSHOT_UI_BINDINGS:-}" "|" SCREENSHOT_UI_BINDINGS_ARRAY DEFAULT_SCREENSHOT_UI_BINDINGS
-  fi
-  if ! declare -p SCREENSHOT_QUICK_BINDINGS_ARRAY >/dev/null 2>&1; then
-    parse_pipe_binding_entries "${SCREENSHOT_QUICK_BINDINGS:-}" "|" SCREENSHOT_QUICK_BINDINGS_ARRAY DEFAULT_SCREENSHOT_QUICK_BINDINGS
-  fi
 
   # Accept the friendly "super+z" form for every configured binding by
   # normalizing each array to GNOME's "<Super>z" form. Idempotent: values
   # already in angle-bracket form pass through unchanged.
   normalize_indexed_binding_list WORKSPACE_SWITCH_BINDINGS_ARRAY
   normalize_indexed_binding_list WORKSPACE_MOVE_BINDINGS_ARRAY
-  normalize_indexed_binding_list SUPER_ARROW_MOVE_BINDINGS_ARRAY
-  normalize_accelerator_list OVERVIEW_BINDINGS_ARRAY
-  normalize_accelerator_list SCREENSHOT_UI_BINDINGS_ARRAY
-  normalize_accelerator_list SCREENSHOT_QUICK_BINDINGS_ARRAY
-}
-
-set_indexed_keybinding_map() {
-  local schema="$1" key_prefix="$2"
-  shift 2
-  local entry idx binding i seen
-
-  if [ "$WORKSPACE_CLEAR_UNUSED_BINDINGS" != "0" ]; then
-    for ((i = 1; i <= WORKSPACE_COUNT; i++)); do
-      seen=0
-      for entry in "$@"; do
-        idx="${entry%%:*}"
-        if [ "$idx" = "$i" ]; then
-          seen=1
-          break
-        fi
-      done
-      if [ "$seen" -eq 0 ]; then
-        set_gsettings_strv "$schema" "${key_prefix}${i}"
-      fi
-    done
-  fi
-
-  for entry in "$@"; do
-    idx="${entry%%:*}"
-    binding="${entry#*:}"
-    set_gsettings_strv "$schema" "${key_prefix}${idx}" "$binding"
-  done
 }
 
 accelerator_with_control() {
@@ -305,16 +225,6 @@ normalize_accelerator() {
   printf '%s%s\n' "$out" "${parts[n-1]}"
 }
 
-# normalize_accelerator_list ARRAY_NAME - normalize each element of a pure
-# accelerator array in place (overview/screenshot lists).
-normalize_accelerator_list() {
-  local -n _arr="$1"
-  local i
-  for i in "${!_arr[@]}"; do
-    _arr[i]="$(normalize_accelerator "${_arr[i]}")"
-  done
-}
-
 # normalize_indexed_binding_list ARRAY_NAME - normalize the accelerator part of
 # each "prefix:accelerator" entry in place (workspace switch/move/super-arrow
 # maps), leaving the prefix untouched.
@@ -349,27 +259,6 @@ configure_workspace_send_extension_bindings() {
     idx="${entry%%:*}"
     binding="${entry#*:}"
     set_extension_strv "send-active-window-to-workspace-${idx}" "$binding" || true
-  done
-}
-
-remove_conflicting_binding_entries() {
-  local schema="$1"
-  shift
-  local entry key binding
-  for entry in "$@"; do
-    key="${entry%%:*}"
-    binding="${entry#*:}"
-    remove_gsettings_list "$schema" "$key" "$binding" || true
-  done
-}
-
-clear_binding_entries() {
-  local schema="$1"
-  shift
-  local entry key
-  for entry in "$@"; do
-    key="${entry%%:*}"
-    set_gsettings_strv "$schema" "$key"
   done
 }
 
@@ -409,52 +298,6 @@ enable_systemd_service() {
   run_as_target systemctl --user daemon-reload || true
   run_as_target systemctl --user enable "$service_name" || true
   run_as_target systemctl --user restart "$service_name" || true
-}
-
-configure_screenshot_binding() {
-  ensure_workspace_binding_arrays
-  msg "Binding screenshot keys"
-  local old_custom_screenshot_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom-screenshot/"
-
-  set_gsettings_strv org.gnome.shell.keybindings show-screenshot-ui "${SCREENSHOT_UI_BINDINGS_ARRAY[@]}"
-  set_gsettings_strv org.gnome.shell.keybindings screenshot "${SCREENSHOT_QUICK_BINDINGS_ARRAY[@]}"
-  set_gsettings_strv org.gnome.shell.keybindings show-screen-recording-ui
-  set_gsettings_strv_if_key_exists org.gnome.settings-daemon.plugins.media-keys screenshot "${SCREENSHOT_QUICK_BINDINGS_ARRAY[@]}"
-  set_gsettings_strv_if_key_exists org.gnome.settings-daemon.plugins.media-keys screenshot-clip "${SCREENSHOT_QUICK_BINDINGS_ARRAY[@]}"
-  remove_gsettings_list org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$old_custom_screenshot_path" || true
-  user_gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:"$old_custom_screenshot_path" binding "''" || true
-}
-
-configure_workspace_keys() {
-  ensure_workspace_binding_arrays
-  msg "Applying workspace and UI keybindings"
-
-  user_gsettings set org.gnome.mutter dynamic-workspaces false
-  user_gsettings set org.gnome.desktop.wm.preferences num-workspaces "$WORKSPACE_COUNT"
-  set_indexed_keybinding_map org.gnome.desktop.wm.keybindings switch-to-workspace- "${WORKSPACE_SWITCH_BINDINGS_ARRAY[@]}"
-  set_indexed_keybinding_map org.gnome.desktop.wm.keybindings move-to-workspace- "${WORKSPACE_MOVE_BINDINGS_ARRAY[@]}"
-
-  local entry key binding
-  for entry in "${SUPER_ARROW_MOVE_BINDINGS_ARRAY[@]}"; do
-    key="${entry%%:*}"
-    binding="${entry#*:}"
-    set_gsettings_strv org.gnome.desktop.wm.keybindings "$key" "$binding"
-  done
-
-  set_gsettings_strv org.gnome.shell.keybindings toggle-overview "${OVERVIEW_BINDINGS_ARRAY[@]}"
-  set_gsettings_strv org.gnome.shell.keybindings toggle-application-view
-  set_gsettings_strv org.gnome.shell.keybindings toggle-quick-settings
-  user_gsettings set org.gnome.mutter overlay-key "''"
-  user_gsettings set org.gnome.desktop.interface enable-animations false
-  user_gsettings set org.gnome.mutter workspaces-only-on-primary false
-  user_gsettings set org.gnome.shell.app-switcher current-workspace-only true
-  user_gsettings set org.gnome.shell.window-switcher current-workspace-only true
-
-  clear_binding_entries org.gnome.desktop.wm.keybindings "${WM_CONFLICT_UNBINDINGS[@]}"
-  if [ -n "${TILING_ASSISTANT_SCHEMA:-}" ] || run_as_target gsettings list-schemas | grep -qx "org.gnome.shell.extensions.tiling-assistant"; then
-    user_gsettings set "${TILING_ASSISTANT_SCHEMA:-org.gnome.shell.extensions.tiling-assistant}" enable-tiling-popup false || true
-    remove_conflicting_binding_entries "${TILING_ASSISTANT_SCHEMA:-org.gnome.shell.extensions.tiling-assistant}" "${TILING_CONFLICT_UNBINDINGS[@]}"
-  fi
 }
 
 configure_monitor_window_hotkeys_extension() {
@@ -862,8 +705,6 @@ EOF
 configure_ubuntu_workspaces_and_hotkeys() {
   msg "Applying Ubuntu workspace setup"
   select_input_device || true
-  configure_screenshot_binding
-  configure_workspace_keys
   configure_albert_keybindings
   configure_monitor_window_hotkeys_extension
   configure_automatic_window_tiling

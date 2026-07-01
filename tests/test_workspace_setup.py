@@ -37,14 +37,28 @@ CONFIG_DIR={config_dir!r}
 TARGET_USER=$(id -un)
 TARGET_HOME=/tmp/linux-workspaces-test-home
 source lib/workspace_setup.sh
-declare -F configure_workspace_keys configure_monitor_window_hotkeys_extension configure_automatic_window_tiling >/dev/null
+declare -F configure_monitor_window_hotkeys_extension configure_automatic_window_tiling >/dev/null
 declare -F configure_ctrl_back_window_tiler_service configure_app_rules_extension configure_auto_move_windows >/dev/null
 """.format(script_dir=str(ROOT_DIR), config_dir=str(ROOT_DIR / "configs"))
     )
     assert proc.returncode == 0, proc.stderr
 
 
-def test_custom_workspace_bindings_clear_unused_entries():
+def test_hotkey_components_are_owned_by_hotkey_repo():
+    """Screenshot and numbered workspace bindings must not be installed here."""
+    setup = (ROOT_DIR / "lib" / "workspace_setup.sh").read_text(encoding="utf-8")
+    lifecycle = (ROOT_DIR / "lib" / "lifecycle.sh").read_text(encoding="utf-8")
+    manifest = (ROOT_DIR / "installer" / "components.sh").read_text(encoding="utf-8")
+
+    assert "configure_screenshot_binding()" not in setup
+    assert "configure_workspace_keys()" not in setup
+    assert "detect_screenshot()" not in lifecycle
+    assert "detect_workspace_keys()" not in lifecycle
+    assert '"screenshot|' not in manifest
+    assert '"workspace_keys|' not in manifest
+
+
+def test_custom_workspace_bindings_configure_extension_send_mode():
     with tempfile.TemporaryDirectory() as td:
         home = Path(td) / "home"
         bin_dir = Path(td) / "bin"
@@ -76,9 +90,6 @@ exit 0
                 "WORKSPACE_SWITCH_BINDINGS": "1:<Super>Z|2:<Super>X",
                 "WORKSPACE_MOVE_BINDINGS": "1:<Super><Shift>z|2:<Super><Shift>x",
                 "SUPER_ARROW_MOVE_BINDINGS": "move-to-workspace-left:<Super><Shift>Left",
-                "OVERVIEW_BINDINGS": "<Super>F9",
-                "SCREENSHOT_UI_BINDINGS": "<Shift><Super>s",
-                "TILING_ASSISTANT_SCHEMA": "org.gnome.shell.extensions.tiling-assistant",
             }
         )
 
@@ -86,8 +97,7 @@ exit 0
             """
 set -euo pipefail
 source lib/workspace_setup.sh
-configure_screenshot_binding >/dev/null 2>&1
-configure_workspace_keys >/dev/null 2>&1
+configure_workspace_send_extension_bindings >/dev/null 2>&1
 """.format(script_dir=str(ROOT_DIR), config_dir=str(ROOT_DIR / "configs"))
         , env=env)
         assert proc.returncode == 0, proc.stderr
@@ -95,91 +105,7 @@ configure_workspace_keys >/dev/null 2>&1
         log_text = log_path.read_text(encoding="utf-8")
         lines = [line.strip() for line in log_text.splitlines() if line.strip()]
 
-        assert any("switch-to-workspace-1 ['<Super>Z']" in line for line in lines)
-        assert any("switch-to-workspace-2 ['<Super>X']" in line for line in lines)
-        assert any("move-to-workspace-1 ['<Super><Shift>z']" in line for line in lines)
-        assert any("move-to-workspace-2 ['<Super><Shift>x']" in line for line in lines)
-        assert any("switch-to-workspace-8 []" in line for line in lines)
-        assert any("toggle-overview ['<Super>F9']" in line for line in lines)
-        assert any("show-screen-recording-ui []" in line for line in lines)
-        assert any("minimize []" in line and "org.gnome.desktop.wm.keybindings" in line for line in lines)
-        assert any("maximize []" in line and "org.gnome.desktop.wm.keybindings" in line for line in lines)
-
-        tile_max_lines = [line for line in lines if line.startswith("set org.gnome.shell.extensions.tiling-assistant tile-maximize")]
-        assert tile_max_lines
-        assert "<Super>Up" not in tile_max_lines[0]
-
-
-def test_detect_workspace_keys_requires_configured_bindings():
-    """GNOME default workspace bindings must not count as installed."""
-    env = os.environ.copy()
-    env.update(
-        {
-            "TARGET_USER": os.environ["USER"],
-            "TARGET_HOME": "/tmp/linux-workspaces-test-home",
-            "CONFIG_DIR": str(ROOT_DIR / "configs"),
-            "WORKSPACE_SWITCH_BINDINGS": "1:<Super>Z|2:<Super>X",
-            "WORKSPACE_MOVE_BINDINGS": "1:<Super><Shift>Z|2:<Super><Shift>X",
-        }
-    )
-    proc = run_bash(
-        """
-set -euo pipefail
-source lib/workspace_setup.sh
-source lib/lifecycle.sh
-run_as_target() {
-  if [ "$1" = gsettings ] && [ "$2" = get ]; then
-    case "$3 $4" in
-      'org.gnome.desktop.wm.keybindings switch-to-workspace-1') printf "['<Super>1']\\n" ;;
-      'org.gnome.desktop.wm.keybindings move-to-workspace-1') printf "[]\\n" ;;
-      'org.gnome.desktop.wm.keybindings switch-to-workspace-2') printf "[]\\n" ;;
-      'org.gnome.desktop.wm.keybindings move-to-workspace-2') printf "[]\\n" ;;
-      *) printf "[]\\n" ;;
-    esac
-  fi
-}
-if detect_workspace_keys; then exit 1; fi
-""",
-        env=env,
-    )
-
-    assert proc.returncode == 0, proc.stderr
-
-
-def test_detect_workspace_keys_accepts_configured_bindings():
-    """Workspace detection succeeds when every configured switch/move key matches."""
-    env = os.environ.copy()
-    env.update(
-        {
-            "TARGET_USER": os.environ["USER"],
-            "TARGET_HOME": "/tmp/linux-workspaces-test-home",
-            "CONFIG_DIR": str(ROOT_DIR / "configs"),
-            "WORKSPACE_SWITCH_BINDINGS": "1:<Super>Z|2:<Super>X",
-            "WORKSPACE_MOVE_BINDINGS": "1:<Super><Shift>Z|2:<Super><Shift>X",
-        }
-    )
-    proc = run_bash(
-        """
-set -euo pipefail
-source lib/workspace_setup.sh
-source lib/lifecycle.sh
-run_as_target() {
-  if [ "$1" = gsettings ] && [ "$2" = get ]; then
-    case "$3 $4" in
-      'org.gnome.desktop.wm.keybindings switch-to-workspace-1') printf "['<Super>Z']\\n" ;;
-      'org.gnome.desktop.wm.keybindings move-to-workspace-1') printf "['<Super><Shift>Z']\\n" ;;
-      'org.gnome.desktop.wm.keybindings switch-to-workspace-2') printf "['<Super>X']\\n" ;;
-      'org.gnome.desktop.wm.keybindings move-to-workspace-2') printf "['<Super><Shift>X']\\n" ;;
-      *) printf "[]\\n" ;;
-    esac
-  fi
-}
-detect_workspace_keys
-""",
-        env=env,
-    )
-
-    assert proc.returncode == 0, proc.stderr
+        assert any("send-mode-workspace-bindings ['1:<Super>Z', '2:<Super>X']" in line for line in lines)
 
 
 def test_workspace_send_extension_bindings_are_derived_from_workspace_config():
@@ -254,7 +180,7 @@ normalize_accelerator ''
     assert lines[6] == ""
 
 
-def test_friendly_workspace_bindings_apply_as_gsettings_form():
+def test_friendly_workspace_bindings_apply_to_extension_send_mode():
     with tempfile.TemporaryDirectory() as td:
         home = Path(td) / "home"
         bin_dir = Path(td) / "bin"
@@ -286,14 +212,13 @@ def test_friendly_workspace_bindings_apply_as_gsettings_form():
             """
 set -euo pipefail
 source lib/workspace_setup.sh
-configure_workspace_keys >/dev/null 2>&1
+configure_workspace_send_extension_bindings >/dev/null 2>&1
 """,
             env=env,
         )
         assert proc.returncode == 0, proc.stderr
         lines = log_path.read_text(encoding="utf-8").splitlines()
-        assert any("switch-to-workspace-1 ['<Super>z']" in line for line in lines)
-        assert any("switch-to-workspace-2 ['<Super>x']" in line for line in lines)
+        assert any("send-mode-workspace-bindings ['1:<Super>z', '2:<Super>x']" in line for line in lines)
 
 
 def test_albert_and_paste_block_components_exist():

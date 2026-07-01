@@ -12,20 +12,9 @@
 
 WORKSPACE_SWITCH_BINDINGS='1:super+z|2:super+x|3:super+c|4:super+a|5:super+q|6:super+w|7:super+e|8:super+r'
 WORKSPACE_MOVE_BINDINGS='1:super+shift+z|2:super+shift+x|3:super+shift+c|4:super+shift+a|5:super+shift+q|6:super+shift+w|7:super+shift+e|8:super+shift+r'
-SUPER_ARROW_MOVE_BINDINGS='move-to-workspace-left:super+shift+Left|move-to-workspace-right:super+shift+Right|move-to-workspace-down:super+shift+Down|move-to-workspace-up:super+shift+Up'
-
-# Leave screen recording empty by default so it cannot shadow Super+R.
-SCREENSHOT_UI_BINDINGS='super+shift+s'
-SCREENSHOT_QUICK_BINDINGS='Print'
-OVERVIEW_BINDINGS='super+Tab'
-APP_VIEWER_BINDINGS=''
-QUICK_SETTINGS_BINDINGS=''
-
 # Albert launcher toggle (component: albert). Default is the Å key (keysym
 # 'aring'); set any accelerator, e.g. ALBERT_TOGGLE_BINDING='super+space'.
 ALBERT_TOGGLE_BINDING='aring'
 ALBERT_TOGGLE_COMMAND='albert toggle'
 
 WORKSPACE_COUNT=8
-# If 0, leave GNOME's unused workspace switch/move keys alone instead of clearing them.
-WORKSPACE_CLEAR_UNUSED_BINDINGS=1

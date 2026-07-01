@@ -2,8 +2,8 @@
 # install.sh — Ubuntu GNOME workspaces and hotkeys setup.
 #
 # This installer owns workspace behavior that was previously split across the
-# broader desktop setup chain: numbered workspace accelerators, monitor/window
-# window-management hotkeys, Ctrl+Back tiling, screenshot/Albert bindings, app
+# broader desktop setup chain: monitor/window management hotkeys, Ctrl+Back
+# tiling, Albert bindings, app
 # workspace rules, and auto-move-window workspace placement.
 #
 # Usage:
@@ -56,8 +56,6 @@ parse_pipe_binding_entries \
   "${WORKSPACE_SWITCH_BINDINGS:-}" "|" WORKSPACE_SWITCH_BINDINGS_ARRAY DEFAULT_WORKSPACE_SWITCH_BINDINGS
 parse_pipe_binding_entries \
   "${WORKSPACE_MOVE_BINDINGS:-}" "|" WORKSPACE_MOVE_BINDINGS_ARRAY DEFAULT_WORKSPACE_MOVE_BINDINGS
-parse_pipe_binding_entries \
-  "${SUPER_ARROW_MOVE_BINDINGS:-}" "|" SUPER_ARROW_MOVE_BINDINGS_ARRAY DEFAULT_SUPER_ARROW_MOVE_BINDINGS
 
 # Component selection runtime and this repository's component manifest. The
 # manifest maps each component id to a configure_* function from

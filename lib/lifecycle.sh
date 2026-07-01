@@ -32,37 +32,8 @@ ws_delegate() {
   local dir="$TARGET_HOME/projects/$1"
   [ -f "$dir/install.sh" ] && run_as_target bash "$dir/install.sh" "${@:2}" || true
 }
-ws_strv_is_single() {
-  local actual="$1" expected="$2"
-  [[ "${actual,,}" == "['${expected,,}']" ]]
-}
-ws_binding_matches() {
-  local schema="$1" key="$2" expected="$3" actual
-  actual="$(run_as_target gsettings get "$schema" "$key" 2>/dev/null || true)"
-  ws_strv_is_single "$actual" "$expected"
-}
 
 # --- Detection ---------------------------------------------------------------
-detect_screenshot() {
-  ensure_workspace_binding_arrays
-  ws_binding_matches org.gnome.shell.keybindings show-screenshot-ui "${SCREENSHOT_UI_BINDINGS_ARRAY[0]}" &&
-    ws_binding_matches org.gnome.shell.keybindings screenshot "${SCREENSHOT_QUICK_BINDINGS_ARRAY[0]}"
-}
-detect_workspace_keys() {
-  ensure_workspace_binding_arrays
-  local entry idx binding
-  for entry in "${WORKSPACE_SWITCH_BINDINGS_ARRAY[@]}"; do
-    idx="${entry%%:*}"
-    binding="${entry#*:}"
-    ws_binding_matches org.gnome.desktop.wm.keybindings "switch-to-workspace-$idx" "$binding" || return 1
-  done
-  for entry in "${WORKSPACE_MOVE_BINDINGS_ARRAY[@]}"; do
-    idx="${entry%%:*}"
-    binding="${entry#*:}"
-    ws_binding_matches org.gnome.desktop.wm.keybindings "move-to-workspace-$idx" "$binding" || return 1
-  done
-  return 0
-}
 detect_albert()                  { ws_mediakeys_has 'albert-aring'; }
 detect_monitor_window_hotkeys()  { [ -d "$(ws_ext_dir monitor-window-hotkeys@local)" ]; }
 detect_automatic_window_tiling() { [ -d "$(ws_ext_dir automatic-window-tiling@local)" ]; }
@@ -78,17 +49,6 @@ detect_auto_move_windows() {
 detect_primary_paste_block()     { [ -f "$TARGET_HOME/.config/systemd/user/xmousepasteblock.service" ]; }
 
 # --- Uninstall ---------------------------------------------------------------
-uninstall_screenshot() {
-  msg "Removing screenshot custom shortcut"; ws_mediakeys_drop 'custom-screenshot'
-  run_as_target gsettings reset org.gnome.settings-daemon.plugins.media-keys screenshot 2>/dev/null || true
-}
-uninstall_workspace_keys() {
-  msg "Resetting numbered workspace switch/move keys"
-  local i; for i in 1 2 3 4 5 6 7 8 9; do
-    run_as_target gsettings reset org.gnome.desktop.wm.keybindings "switch-to-workspace-$i" 2>/dev/null || true
-    run_as_target gsettings reset org.gnome.desktop.wm.keybindings "move-to-workspace-$i" 2>/dev/null || true
-  done
-}
 uninstall_albert()                 { msg "Removing Albert toggle shortcut"; ws_mediakeys_drop 'albert-aring'; }
 uninstall_monitor_window_hotkeys() { msg "Removing monitor/window hotkeys extension"; ws_remove_extension monitor-window-hotkeys@local; }
 uninstall_automatic_window_tiling(){ msg "Uninstalling automatic window tiling (delegated)"; ws_delegate linux_automatic_window_tiling --uninstall keybinding,per_app_widths,portrait_stacking; }

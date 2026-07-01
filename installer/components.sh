@@ -17,8 +17,6 @@ ISC_PREFLIGHT="select_input_device"
 ISC_POSTFLIGHT="report_sudo_required"
 
 ISC_COMPONENTS=(
-  "screenshot|Screenshot shortcuts|on|configure_screenshot_binding|detect_screenshot|uninstall_screenshot"
-  "workspace_keys|Numbered workspace switch/move keys|on|configure_workspace_keys|detect_workspace_keys|uninstall_workspace_keys"
   "albert|Albert launcher toggle binding|on|configure_albert_keybindings|detect_albert|uninstall_albert"
   "monitor_window_hotkeys|Monitor/window movement hotkeys extension|on|configure_monitor_window_hotkeys_extension|detect_monitor_window_hotkeys|uninstall_monitor_window_hotkeys"
   "automatic_window_tiling|Automatic same-app window tiling|on|configure_automatic_window_tiling|detect_automatic_window_tiling|uninstall_automatic_window_tiling"
