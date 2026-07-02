@@ -27,7 +27,7 @@ See the full cross-repository map in
 
 - From `linux_hotkey_setup`: Albert bindings, monitor/window hotkeys extension, numbered workspace popup, Ctrl+Back window tiler service, and xmousepasteblock clipboard-lock wiring.
 - Kept in `linux_hotkey_setup`: screenshot and numbered workspace switch/move shortcuts.
-- From `linux_configuration_setup`: app-rules GNOME Shell extension that assigns apps to workspaces or sticky windows.
+- From `linux_configuration_setup`: app-rules GNOME Shell extension that assigns apps to workspaces or sticky windows. Sticky (all-workspaces) rules are dynamic: the master installer's `[p]` menu action writes them to `~/.config/app-rules/user-rules.json` (queried back with `install.sh --list-selected-sticky-apps`); until that file exists the extension falls back to its built-in Spotify/Discord sticky rules.
 - From `ubuntu_2404_taskbar_system_status_monitor`: Window Rules/Workspace rules behavior and Auto-move-windows workspace placement configuration. The Ubuntu taskbar repository keeps the resource monitor/taskbar UI pieces only.
 - Kept separate but invoked by this repo: automatic same-application window tiling in `linux_automatic_window_tiling`.
 

@@ -38,6 +38,24 @@ isc_load_helpers
 source "$SCRIPT_DIR/lib/workspace_setup.sh"
 source "$SCRIPT_DIR/lib/lifecycle.sh"
 
+# list_selected_sticky_apps - Print the .desktop ids currently configured to
+# stay on all workspaces, one per line (the master menu's [p] restore source).
+#
+# The user-rules file is installer-owned and contains only sticky rules, so
+# every appId in it is a sticky candidate. While the file has never been
+# written, the app-rules extension applies its built-in legacy fallback
+# (Spotify + Discord), so report those when the extension is deployed.
+list_selected_sticky_apps() {
+  local file="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
+  if [ -f "$file" ]; then
+    grep -oE '"[^"]+\.desktop"' "$file" | tr -d '"' || true
+    return 0
+  fi
+  if [ -d "$TARGET_HOME/.local/share/gnome-shell/extensions/app-rules@local" ]; then
+    printf 'spotify.desktop\nspotify_spotify.desktop\ndiscord.desktop\ndiscord_discord.desktop\n'
+  fi
+}
+
 list_selected_app_workspaces() {
   local schema_dir="$TARGET_HOME/.local/share/gnome-shell/extensions/auto-move-windows@gnome-shell-extensions.gcampax.github.com/schemas"
   [[ -f "$schema_dir/gschemas.compiled" ]] && export GSETTINGS_SCHEMA_DIR="$schema_dir"
@@ -119,6 +137,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   # --list-components); bypass the surrounding messages for those.
   case "${1:-}" in
     --list-selected-app-workspaces) list_selected_app_workspaces; exit $? ;;
+    --list-selected-sticky-apps) list_selected_sticky_apps; exit $? ;;
     --list-components|--detect|--help|-h|--uninstall|--uninstall=*) component_main "$@"; exit $? ;;
   esac
   main "$@"

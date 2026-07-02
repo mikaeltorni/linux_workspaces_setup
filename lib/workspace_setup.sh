@@ -548,10 +548,59 @@ EOF
   enable_shell_extension "$ext_id"
 }
 
+# Installer-owned dynamic rule file read by app-rules@local at enable time.
+# The master menu's [p] (persistent on all workspaces) selection is serialized
+# here; while it does not exist the extension keeps its built-in legacy sticky
+# fallback (Spotify + Discord), so clean installs behave as before.
+APP_RULES_USER_RULES_FILE="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
+
+# write_app_rules_sticky_rules - Serialize the master [p] selection to the
+# app-rules user-rules file.
+#
+# Reads SELECTED_STICKY_APPS (semicolon-separated groups of pipe-separated
+# .desktop candidates for the same app) and rewrites the whole file, which is
+# exclusively installer-owned. Runs only when MANAGED_STICKY_APPS is set (the
+# master drove this run); a standalone run leaves any existing selection
+# untouched. Writing an empty rules list is meaningful: it suppresses the
+# extension's built-in sticky fallback once the menu becomes the authority.
+#
+# Returns: 0 always (skipped or written).
+write_app_rules_sticky_rules() {
+  if [[ ! ${MANAGED_STICKY_APPS+x} ]]; then
+    log_debug "write_app_rules_sticky_rules: MANAGED_STICKY_APPS unset; keeping existing sticky rules"
+    return 0
+  fi
+  msg "Writing all-workspaces (sticky) application rules"
+  local group candidate ids entries=""
+  local -a groups=()
+  IFS=';' read -r -a groups <<<"${SELECTED_STICKY_APPS:-}"
+  for group in "${groups[@]}"; do
+    [ -n "$group" ] || continue
+    ids=""
+    for candidate in ${group//|/ }; do
+      ids+="${ids:+, }\"$candidate\""
+    done
+    entries+="${entries:+,
+    }{ \"appIds\": [$ids], \"sticky\": true }"
+    log_line INFO "sticky rule selected: $group"
+  done
+  run_as_target mkdir -p "$(dirname "$APP_RULES_USER_RULES_FILE")"
+  run_as_target tee "$APP_RULES_USER_RULES_FILE" >/dev/null <<EOF
+{
+  "rules": [
+    ${entries}
+  ]
+}
+EOF
+  log_line INFO "wrote $APP_RULES_USER_RULES_FILE ($(( ${#groups[@]} )) selected group(s))"
+}
+
 configure_app_rules_extension() {
   msg "Deploying app-rules@local GNOME Shell extension"
   local ext_src="$CONFIG_DIR/gnome-extensions/app-rules@local"
   local ext_dst="$TARGET_HOME/.local/share/gnome-shell/extensions/app-rules@local"
+
+  write_app_rules_sticky_rules
 
   if [ ! -d "$ext_src" ]; then
     msg "app-rules source not found at $ext_src; skipping."

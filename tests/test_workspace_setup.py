@@ -369,6 +369,141 @@ log_warn "recoverable warning"
         assert "WARN recoverable warning" in log_text
 
 
+def _sticky_env(td: str) -> dict[str, str]:
+    env = os.environ.copy()
+    env["WORKSPACE_SETUP_LOG_DIR"] = str(Path(td) / ".log")
+    return env
+
+
+def test_sticky_rules_written_from_master_selection():
+    """MANAGED_STICKY_APPS set -> the [p] selection is serialized as JSON rules."""
+    with tempfile.TemporaryDirectory() as td:
+        rules_file = Path(td) / "user-rules.json"
+        proc = run_bash(
+            f"""
+set -euo pipefail
+SCRIPT_DIR={str(ROOT_DIR)!r}
+CONFIG_DIR={str(ROOT_DIR / "configs")!r}
+TARGET_USER=$(id -un)
+TARGET_HOME={td!r}
+export APP_RULES_USER_RULES_FILE={str(rules_file)!r}
+export MANAGED_STICKY_APPS='spotify.desktop|spotify_spotify.desktop;vlc.desktop'
+export SELECTED_STICKY_APPS='spotify.desktop|spotify_spotify.desktop'
+source lib/workspace_setup.sh
+write_app_rules_sticky_rules >/dev/null
+""",
+            env=_sticky_env(td),
+        )
+        assert proc.returncode == 0, proc.stderr
+        import json
+
+        payload = json.loads(rules_file.read_text(encoding="utf-8"))
+        assert payload["rules"] == [
+            {"appIds": ["spotify.desktop", "spotify_spotify.desktop"], "sticky": True}
+        ]
+
+
+def test_sticky_rules_empty_selection_writes_empty_authority_file():
+    """Unmarking every [p] app writes an empty rules list (suppresses fallback)."""
+    with tempfile.TemporaryDirectory() as td:
+        rules_file = Path(td) / "user-rules.json"
+        proc = run_bash(
+            f"""
+set -euo pipefail
+SCRIPT_DIR={str(ROOT_DIR)!r}
+CONFIG_DIR={str(ROOT_DIR / "configs")!r}
+TARGET_USER=$(id -un)
+TARGET_HOME={td!r}
+export APP_RULES_USER_RULES_FILE={str(rules_file)!r}
+export MANAGED_STICKY_APPS='spotify.desktop|spotify_spotify.desktop'
+export SELECTED_STICKY_APPS=''
+source lib/workspace_setup.sh
+write_app_rules_sticky_rules >/dev/null
+""",
+            env=_sticky_env(td),
+        )
+        assert proc.returncode == 0, proc.stderr
+        import json
+
+        assert json.loads(rules_file.read_text(encoding="utf-8"))["rules"] == []
+
+
+def test_sticky_rules_untouched_without_master_env():
+    """A standalone run (MANAGED_STICKY_APPS unset) must keep the existing file."""
+    with tempfile.TemporaryDirectory() as td:
+        rules_file = Path(td) / "user-rules.json"
+        rules_file.write_text('{"rules": [{"appIds": ["x.desktop"], "sticky": true}]}')
+        proc = run_bash(
+            f"""
+set -euo pipefail
+SCRIPT_DIR={str(ROOT_DIR)!r}
+CONFIG_DIR={str(ROOT_DIR / "configs")!r}
+TARGET_USER=$(id -un)
+TARGET_HOME={td!r}
+export APP_RULES_USER_RULES_FILE={str(rules_file)!r}
+unset MANAGED_STICKY_APPS SELECTED_STICKY_APPS
+source lib/workspace_setup.sh
+write_app_rules_sticky_rules >/dev/null
+""",
+            env=_sticky_env(td),
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert '"x.desktop"' in rules_file.read_text(encoding="utf-8")
+
+
+def test_list_selected_sticky_apps_reads_rules_file():
+    """--list-selected-sticky-apps reports the appIds in the user-rules file."""
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        rules_dir = home / ".config" / "app-rules"
+        rules_dir.mkdir(parents=True)
+        (rules_dir / "user-rules.json").write_text(
+            '{"rules": [{"appIds": ["spotify.desktop", "spotify_spotify.desktop"], "sticky": true}]}'
+        )
+        proc = run_bash(
+            f"""
+set -euo pipefail
+TARGET_HOME={td!r}
+eval "$(sed -n '/^list_selected_sticky_apps()/,/^}}/p' install.sh)"
+list_selected_sticky_apps
+""",
+        )
+        assert proc.returncode == 0, proc.stderr
+        lines = proc.stdout.split()
+        assert "spotify.desktop" in lines
+        assert "spotify_spotify.desktop" in lines
+
+
+def test_list_selected_sticky_apps_falls_back_to_legacy_when_unwritten():
+    """Without a rules file, a deployed extension reports the built-in fallback."""
+    with tempfile.TemporaryDirectory() as td:
+        ext_dir = Path(td) / ".local/share/gnome-shell/extensions/app-rules@local"
+        ext_dir.mkdir(parents=True)
+        proc = run_bash(
+            f"""
+set -euo pipefail
+TARGET_HOME={td!r}
+eval "$(sed -n '/^list_selected_sticky_apps()/,/^}}/p' install.sh)"
+list_selected_sticky_apps
+""",
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "spotify_spotify.desktop" in proc.stdout.split()
+        assert "discord_discord.desktop" in proc.stdout.split()
+
+
+def test_app_rules_extension_loads_user_rules_dynamically():
+    """The extension must read user-rules.json and keep a legacy sticky fallback."""
+    source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
+        encoding="utf-8"
+    )
+    assert "user-rules.json" in source
+    assert "STICKY_FALLBACK_RULES" in source
+    # The always-on builtin list must no longer hardcode sticky apps.
+    rules_block = source.split("const RULES = [", 1)[1].split("];", 1)[0]
+    assert "sticky" not in rules_block
+
+
 if __name__ == "__main__":
     tests = [t for name, t in sorted(globals().items()) if name.startswith("test_") and callable(t)]
     failed = 0
