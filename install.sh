@@ -138,7 +138,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   case "${1:-}" in
     --list-selected-app-workspaces) list_selected_app_workspaces; exit $? ;;
     --list-selected-sticky-apps) list_selected_sticky_apps; exit $? ;;
-    --list-components|--detect|--help|-h|--uninstall|--uninstall=*) component_main "$@"; exit $? ;;
+    --list-components|--export-selection|--detect|--help|-h|--uninstall|--uninstall=*) component_main "$@"; exit $? ;;
   esac
   main "$@"
 fi
