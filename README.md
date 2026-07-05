@@ -81,9 +81,11 @@ WORKSPACE_MOVE_BINDINGS='1:super+shift+z|2:super+shift+x'
 ALBERT_TOGGLE_BINDING='super+space'
 ```
 
-The extension derives its no-switch `<Control>` variants and Super+U send-mode
-target keys from these maps. Configure the primary switch/move accelerators
-through `linux_hotkey_setup`. GNOME Shell extensions require a logout/login to
+This repository configures the Super+U send-mode target keys and the no-switch
+`<Control>` variants on the `monitor-window-hotkeys@local` extension (which is
+installed by the standalone `linux_monitor_window_hotkeys` repository, not
+bundled here) so they stay in sync with these maps. Configure the primary
+switch/move accelerators through `linux_hotkey_setup`. GNOME Shell extensions require a logout/login to
 load newly copied shell-extension files. The installer enables extensions
 without replacing `gnome-shell` and preserves your existing enabled-extension
 list.
@@ -95,7 +97,7 @@ python3 -m py_compile configs/window-hotkeys/ctrl_back_tile_right.py \
   configs/window-hotkeys/ctrl_back_event_state.py \
   configs/window-hotkeys/input_device_paths.py \
   configs/window-hotkeys/tile_right_client.py
-bash -n install.sh lib/workspace_setup.sh configs/gnome-shell/extensions/monitor-window-hotkeys@local/apply-system-bindings.sh
+bash -n install.sh lib/workspace_setup.sh lib/lifecycle.sh
 python3 -m pytest tests
 ```
 

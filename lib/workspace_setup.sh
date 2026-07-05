@@ -747,17 +747,3 @@ EOF
   run_as_target systemctl --user start xmousepasteblock.service || true
 }
 
-configure_ubuntu_workspaces_and_hotkeys() {
-  msg "Applying Ubuntu workspace setup"
-  select_input_device || true
-  configure_albert_keybindings
-  configure_monitor_window_hotkeys_extension
-  configure_automatic_window_tiling
-  configure_ctrl_back_window_tiler_service
-  configure_workspace_number_popup_extension
-  configure_app_rules_extension
-  configure_auto_move_windows
-  configure_primary_paste_block
-  report_sudo_required
-  msg "Ubuntu workspace setup complete. Log out and back in before testing GNOME Shell extension changes."
-}

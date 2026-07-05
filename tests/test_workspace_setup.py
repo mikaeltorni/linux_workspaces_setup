@@ -37,7 +37,7 @@ CONFIG_DIR={config_dir!r}
 TARGET_USER=$(id -un)
 TARGET_HOME=/tmp/linux-workspaces-test-home
 source lib/workspace_setup.sh
-declare -F configure_monitor_window_hotkeys_extension configure_automatic_window_tiling >/dev/null
+declare -F configure_workspace_send_extension_bindings configure_automatic_window_tiling >/dev/null
 declare -F configure_ctrl_back_window_tiler_service configure_app_rules_extension configure_auto_move_windows >/dev/null
 """.format(script_dir=str(ROOT_DIR), config_dir=str(ROOT_DIR / "configs"))
     )
@@ -309,36 +309,31 @@ configure_albert_keybindings >/dev/null 2>&1
 
 
 def test_workspace_assets_and_delegation_are_present():
-    assert (ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/extension.js").is_file()
-    assert (ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/gsettings-strv.py").is_file()
     assert (ROOT_DIR / "configs/window-hotkeys/ctrl_back_tile_right.py").is_file()
     assert (ROOT_DIR / "configs/window-hotkeys/ctrl_back_event_state.py").is_file()
     assert (ROOT_DIR / "configs/window-hotkeys/input_device_paths.py").is_file()
     setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
     assert "AUTOMATIC_WINDOW_TILING_BINDING:-<Super>t" in setup
     assert 'bash "$installer" "$AUTOMATIC_WINDOW_TILING_BINDING"' in setup
-    extension = (
-        ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local/extension.js"
-    ).read_text(encoding="utf-8")
-    assert "send-window-to-workspace-mode" in extension
-    assert "send-active-window-to-workspace-8" in extension
+
+
+def test_monitor_window_extension_extracted_but_send_mode_config_stays():
+    """The monitor-window-hotkeys@local extension moved to its own repository;
+    this repo keeps only the send-mode key-map configuration."""
+    assert not (
+        ROOT_DIR / "configs/gnome-shell/extensions/monitor-window-hotkeys@local"
+    ).exists()
+    setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
+    manifest = (ROOT_DIR / "installer/components.sh").read_text(encoding="utf-8")
+    assert "configure_monitor_window_hotkeys_extension" not in setup
+    assert "configure_workspace_send_extension_bindings" in setup
+    assert "workspace_send_mode|" in manifest
 
 
 def test_gsettings_list_mutation_uses_extracted_helper():
     setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
-    apply_bindings = (
-        ROOT_DIR
-        / "configs"
-        / "gnome-shell"
-        / "extensions"
-        / "monitor-window-hotkeys@local"
-        / "apply-system-bindings.sh"
-    ).read_text(encoding="utf-8")
-
     assert "gsettings_strv.py" in setup
     assert "python3 - <<'PY'" not in setup
-    assert "gsettings-strv.py" in apply_bindings
-    assert "python3 - <<'PY'" not in apply_bindings
 
 
 def test_workspace_setup_logging_is_centralized_and_best_effort():
