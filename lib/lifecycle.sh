@@ -35,7 +35,10 @@ ws_delegate() {
 
 # --- Detection ---------------------------------------------------------------
 detect_albert()                  { ws_mediakeys_has 'albert-aring'; }
-detect_monitor_window_hotkeys()  { [ -d "$(ws_ext_dir monitor-window-hotkeys@local)" ]; }
+# Send-mode config only has effect when the monitor-window-hotkeys@local
+# extension (owned by linux_monitor_window_hotkeys) is installed, so detection
+# keys off the extension's presence.
+detect_workspace_send_mode()     { [ -d "$(ws_ext_dir monitor-window-hotkeys@local)" ]; }
 detect_automatic_window_tiling() { [ -d "$(ws_ext_dir automatic-window-tiling@local)" ]; }
 detect_ctrl_back_tiler()         { [ -f "$TARGET_HOME/.config/systemd/user/ctrl-back-window-tiler.service" ]; }
 detect_workspace_popup()         { [ -d "$(ws_ext_dir workspace-number-indicator@local)" ]; }
@@ -50,7 +53,19 @@ detect_primary_paste_block()     { [ -f "$TARGET_HOME/.config/systemd/user/xmous
 
 # --- Uninstall ---------------------------------------------------------------
 uninstall_albert()                 { msg "Removing Albert toggle shortcut"; ws_mediakeys_drop 'albert-aring'; }
-uninstall_monitor_window_hotkeys() { msg "Removing monitor/window hotkeys extension"; ws_remove_extension monitor-window-hotkeys@local; }
+# Reset only the send-mode key map to schema defaults; the extension itself is
+# owned and removed by linux_monitor_window_hotkeys, not here.
+uninstall_workspace_send_mode() {
+  msg "Resetting workspace send-mode key map to defaults"
+  local key
+  for key in send-mode-workspace-bindings send-active-window-to-workspace-1 \
+             send-active-window-to-workspace-2 send-active-window-to-workspace-3 \
+             send-active-window-to-workspace-4 send-active-window-to-workspace-5 \
+             send-active-window-to-workspace-6 send-active-window-to-workspace-7 \
+             send-active-window-to-workspace-8; do
+    extension_gsettings reset org.gnome.shell.extensions.monitor-window-hotkeys "$key" 2>/dev/null || true
+  done
+}
 uninstall_automatic_window_tiling(){ msg "Uninstalling automatic window tiling (delegated)"; ws_delegate linux_automatic_window_tiling --uninstall keybinding,per_app_widths,portrait_stacking; }
 uninstall_ctrl_back_tiler() {
   msg "Removing Ctrl+Back window tiler service"

@@ -17,8 +17,11 @@ WORKSPACE_SETUP_CONFIG_DIR="$WORKSPACE_SETUP_DIR/configs"
 : "${SESSION_TYPE:=${XDG_SESSION_TYPE:-unknown}}"
 : "${APT_UPDATED:=0}"
 : "${WORKSPACE_COUNT:=8}"
+# The monitor-window-hotkeys@local extension is installed by the standalone
+# linux_monitor_window_hotkeys repository; this repo only configures its send-mode
+# key map, so it references the extension id (for the schema dir) but no longer
+# ships or installs the extension source.
 : "${MONITOR_WINDOW_HOTKEYS_EXTENSION_ID:=monitor-window-hotkeys@local}"
-: "${MONITOR_WINDOW_HOTKEYS_SOURCE_DIR:=$CONFIG_DIR/gnome-shell/extensions/$MONITOR_WINDOW_HOTKEYS_EXTENSION_ID}"
 : "${AUTOMATIC_WINDOW_TILING_DIR:=$SCRIPT_DIR/../linux_automatic_window_tiling}"
 AUTOMATIC_WINDOW_TILING_BINDING="${AUTOMATIC_WINDOW_TILING_BINDING:-<Super>t}"
 
@@ -264,6 +267,7 @@ normalize_indexed_binding_list() {
 }
 
 configure_workspace_send_extension_bindings() {
+  msg "Configuring workspace send-mode key map on monitor-window-hotkeys@local"
   ensure_workspace_binding_arrays
 
   local send_mode_entries=() no_switch_entries=() entry idx binding
@@ -324,45 +328,13 @@ enable_systemd_service() {
   run_as_target systemctl --user restart "$service_name" || true
 }
 
-configure_monitor_window_hotkeys_extension() {
-  msg "Installing local GNOME Shell monitor/window hotkeys"
-
-  local ext_id="$MONITOR_WINDOW_HOTKEYS_EXTENSION_ID"
-  local source_dir="$MONITOR_WINDOW_HOTKEYS_SOURCE_DIR"
-  local ext_dir="$TARGET_HOME/.local/share/gnome-shell/extensions/$ext_id"
-
-  if [ ! -d "$source_dir" ]; then
-    msg "Monitor/window hotkeys source not found at $source_dir; skipping."
-    return 0
-  fi
-
-  if is_root; then
-    install -d -o "$TARGET_USER" -g "$TARGET_USER" "$ext_dir"
-  else
-    install -d "$ext_dir"
-  fi
-  cp -a "$source_dir/." "$ext_dir/"
-  if is_root; then
-    chown -R "$TARGET_USER:$TARGET_USER" "$ext_dir"
-  fi
-  run_as_target chmod +x "$ext_dir/apply-system-bindings.sh"
-
-  if ! need_cmd glib-compile-schemas; then
-    apt_install libglib2.0-bin
-  fi
-  if need_cmd glib-compile-schemas; then
-    glib-compile-schemas "$ext_dir/schemas"
-  fi
-
-  if ! run_as_target "$ext_dir/apply-system-bindings.sh"; then
-    msg "WARNING: monitor-window-hotkeys apply-system-bindings.sh failed; log out/in, then re-run installer."
-    return 0
-  fi
-
-  configure_workspace_send_extension_bindings
-  enable_shell_extension "$ext_id"
-  msg "Monitor/window hotkeys extension installed. Log out and back in before testing Shell extension changes."
-}
+# The monitor-window-hotkeys@local GNOME Shell extension (move-to-monitor,
+# half-tiling, D-Bus tiling, and the Super+U send-mode itself) now lives in the
+# standalone linux_monitor_window_hotkeys repository, which installs and enables
+# it. This repository only *configures* the send-mode workspace key map on that
+# already-installed extension (configure_workspace_send_extension_bindings),
+# keeping the send-to-workspace hotkeys in sync with the user's workspace
+# switch/move bindings without duplicating the extension.
 
 configure_automatic_window_tiling() {
   msg "Configuring automatic window tiling"

@@ -132,7 +132,7 @@ or none, and **Enter** installs the selection. Components:
 
 | Component id | Description | Default |
 |---|---|---|
-| `monitor_window_hotkeys` | Monitor/window movement hotkeys extension | on |
+| `workspace_send_mode` | Send active window to workspace (Super+U key map) | on |
 | `automatic_window_tiling` | Automatic same-app window tiling | on |
 | `ctrl_back_tiler` | Ctrl+Back window tiler service | on |
 | `workspace_popup` | Numbered workspace popup extension | on |

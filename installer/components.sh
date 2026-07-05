@@ -18,7 +18,7 @@ ISC_POSTFLIGHT="report_sudo_required"
 
 ISC_COMPONENTS=(
   "albert|Albert launcher toggle binding|on|configure_albert_keybindings|detect_albert|uninstall_albert"
-  "monitor_window_hotkeys|Monitor/window movement hotkeys extension|on|configure_monitor_window_hotkeys_extension|detect_monitor_window_hotkeys|uninstall_monitor_window_hotkeys"
+  "workspace_send_mode|Send active window to workspace (Super+U key map)|on|configure_workspace_send_extension_bindings|detect_workspace_send_mode|uninstall_workspace_send_mode"
   "automatic_window_tiling|Automatic same-app window tiling|on|configure_automatic_window_tiling|detect_automatic_window_tiling|uninstall_automatic_window_tiling"
   "ctrl_back_tiler|Ctrl+Back window tiler service|on|configure_ctrl_back_window_tiler_service|detect_ctrl_back_tiler|uninstall_ctrl_back_tiler"
   "workspace_popup|Numbered workspace popup extension|on|configure_workspace_number_popup_extension|detect_workspace_popup|uninstall_workspace_popup"
