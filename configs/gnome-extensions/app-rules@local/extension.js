@@ -148,9 +148,11 @@ function matchAndApply(win, rules) {
 export default class AppRulesExtension extends Extension {
   enable() {
     const userRules = loadUserRules();
+    // Spotify and Discord are installation defaults: keep them sticky even
+    // when the master installer has created an empty user-rules file.
     this._rules = userRules === null
       ? [...RULES, ...STICKY_FALLBACK_RULES]
-      : [...userRules, ...RULES];
+      : [...userRules, ...RULES, ...STICKY_FALLBACK_RULES];
 
     this._sig = global.display.connect('window-created', (_disp, win) => {
       matchAndApply(win, this._rules);
