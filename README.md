@@ -98,6 +98,7 @@ python3 -m py_compile configs/window-hotkeys/ctrl_back_tile_right.py \
   configs/window-hotkeys/input_device_paths.py \
   configs/window-hotkeys/tile_right_client.py
 bash -n install.sh lib/workspace_setup.sh lib/lifecycle.sh
+cargo test
 python3 -m pytest tests
 ```
 

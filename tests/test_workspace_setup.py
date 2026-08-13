@@ -332,8 +332,8 @@ def test_monitor_window_extension_extracted_but_send_mode_config_stays():
 
 def test_gsettings_list_mutation_uses_extracted_helper():
     setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
-    assert "gsettings_strv.py" in setup
-    assert "python3 - <<'PY'" not in setup
+    assert "wss_bin" in setup
+    assert "gsettings_strv.py" not in setup
 
 
 def test_workspace_setup_logging_is_centralized_and_best_effort():
