@@ -8,6 +8,8 @@
 : "${TARGET_HOME:=$(getent passwd "$TARGET_USER" | cut -d: -f6)}"
 WORKSPACE_SETUP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_SETUP_DIR="$(cd "$WORKSPACE_SETUP_LIB_DIR/.." && pwd)"
+# shellcheck source=wss_bin.sh
+source "$WORKSPACE_SETUP_LIB_DIR/wss_bin.sh"
 WORKSPACE_SETUP_CONFIG_DIR="$WORKSPACE_SETUP_DIR/configs"
 : "${SCRIPT_DIR:=$WORKSPACE_SETUP_DIR}"
 : "${CONFIG_DIR:=$WORKSPACE_SETUP_CONFIG_DIR}"
@@ -163,7 +165,7 @@ append_gsettings_list() {
     log_warn "Could not read $schema $key; using an empty list before appending $value"
     current="[]"
   fi
-  new_value="$(CURRENT="$current" python3 "$WORKSPACE_SETUP_LIB_DIR/gsettings_strv.py" append "$value")"
+  new_value="$(CURRENT="$current" wss_bin append "$value")"
   log_debug "Setting $schema $key to $new_value"
   user_gsettings set "$schema" "$key" "$new_value"
 }
@@ -174,7 +176,7 @@ remove_gsettings_list() {
     log_warn "Could not read $schema $key; using an empty list before removing $value"
     current="[]"
   fi
-  new_value="$(CURRENT="$current" python3 "$WORKSPACE_SETUP_LIB_DIR/gsettings_strv.py" remove "$value")"
+  new_value="$(CURRENT="$current" wss_bin remove "$value")"
   log_debug "Setting $schema $key to $new_value"
   user_gsettings set "$schema" "$key" "$new_value"
 }

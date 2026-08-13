@@ -2,6 +2,9 @@ linux_bash_install-*.log
 *.pyc
 __pycache__/
 .pytest_cache/
+target/
+dist/
+.cargo-container/
 
 *.log
 .log/
