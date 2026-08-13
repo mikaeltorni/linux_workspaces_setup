@@ -309,9 +309,11 @@ configure_albert_keybindings >/dev/null 2>&1
 
 
 def test_workspace_assets_and_delegation_are_present():
-    assert (ROOT_DIR / "configs/window-hotkeys/ctrl_back_tile_right.py").is_file()
-    assert (ROOT_DIR / "configs/window-hotkeys/ctrl_back_event_state.py").is_file()
-    assert (ROOT_DIR / "configs/window-hotkeys/input_device_paths.py").is_file()
+    assert (ROOT_DIR / "src/tiler.rs").is_file()
+    assert (ROOT_DIR / "src/main.rs").is_file()
+    assert not (ROOT_DIR / "configs/window-hotkeys/ctrl_back_tile_right.py").exists()
+    assert not (ROOT_DIR / "configs/window-hotkeys/ctrl_back_event_state.py").exists()
+    assert not (ROOT_DIR / "configs/window-hotkeys/input_device_paths.py").exists()
     setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
     assert "AUTOMATIC_WINDOW_TILING_BINDING:-<Super>t" in setup
     assert 'bash "$installer" "$AUTOMATIC_WINDOW_TILING_BINDING"' in setup

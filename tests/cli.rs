@@ -38,3 +38,16 @@ fn rejects_wrong_usage() {
     let bad = bin().args(["update", "x"]).output().expect("bad action");
     assert_eq!(bad.status.code(), Some(2));
 }
+
+#[test]
+fn list_pointers_exits_cleanly() {
+    let out = bin()
+        .args(["list-pointers"])
+        .output()
+        .expect("list-pointers");
+    assert!(
+        out.status.success(),
+        "stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}

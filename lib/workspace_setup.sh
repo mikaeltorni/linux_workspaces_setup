@@ -353,27 +353,7 @@ configure_automatic_window_tiling() {
 select_input_device() {
   msg "Detecting pointing devices with back buttons"
   local device_list
-  device_list="$(PYTHONPATH="$CONFIG_DIR/window-hotkeys${PYTHONPATH:+:$PYTHONPATH}" python3 -c '
-from evdev import InputDevice, ecodes, list_devices
-from input_device_paths import input_device_sort_key, stable_device_path
-
-BACK_CODES = {ecodes.KEY_BACK, ecodes.BTN_SIDE, ecodes.BTN_EXTRA}
-POINTER_RELS = {ecodes.REL_X, ecodes.REL_Y}
-devices = []
-for path in sorted(list_devices(), key=input_device_sort_key):
-    try:
-        dev = InputDevice(path)
-    except OSError:
-        continue
-    caps = dev.capabilities(absinfo=False)
-    keys = set(caps.get(ecodes.EV_KEY, []))
-    rels = set(caps.get(ecodes.EV_REL, []))
-    if (rels & POINTER_RELS) and (keys & BACK_CODES) and "ctrl-back-window-tiler" not in dev.name:
-        devices.append((stable_device_path(dev.path), dev.name))
-    dev.close()
-for path, name in devices:
-    print(f"{path}|{name}")
-' 2>/dev/null)" || true
+  device_list="$(wss_bin list-pointers 2>/dev/null || true)"
   if [ -z "$device_list" ]; then
     msg "No pointing devices with back buttons detected; tiler service will be skipped."
     return 1
@@ -387,35 +367,28 @@ for path, name in devices:
 
 configure_ctrl_back_window_tiler_service() {
   msg "Installing Ctrl + browser-back window tiler service"
-  local script_source="$CONFIG_DIR/window-hotkeys/ctrl_back_tile_right.py"
-  local state_source="$CONFIG_DIR/window-hotkeys/ctrl_back_event_state.py"
-  local paths_source="$CONFIG_DIR/window-hotkeys/input_device_paths.py"
-  local client_source="$CONFIG_DIR/window-hotkeys/tile_right_client.py"
-  local logging_source="$CONFIG_DIR/window-hotkeys/logging_setup.py"
-  local service_source="$CONFIG_DIR/window-hotkeys/ctrl-back-window-tiler.service"
+  if ! ensure_wss_bin; then
+    msg "wss-tools binary missing; skipping Ctrl-back tiler service."
+    return 0
+  fi
+  local bin_source="$WSS_BIN"
   local bin_dir="$TARGET_HOME/.local/bin"
+  local bin_target="$bin_dir/wss-tools"
   local service_target="$TARGET_HOME/.config/systemd/user/ctrl-back-window-tiler.service"
   local device_filter="${SELECTED_INPUT_DEVICE:-}"
 
-  if [ ! -f "$script_source" ] || [ ! -f "$service_source" ]; then
-    msg "Ctrl-back tiler service source files missing; skipping."
-    return 0
-  fi
-
   run_as_target mkdir -p "$bin_dir" "$(dirname "$service_target")"
   if is_root; then
-    install -m 0755 -o "$TARGET_USER" -g "$TARGET_USER" "$script_source" "$bin_dir/ctrl_back_tile_right.py"
-    install -m 0644 -o "$TARGET_USER" -g "$TARGET_USER" "$state_source" "$bin_dir/ctrl_back_event_state.py"
-    install -m 0644 -o "$TARGET_USER" -g "$TARGET_USER" "$paths_source" "$bin_dir/input_device_paths.py"
-    install -m 0644 -o "$TARGET_USER" -g "$TARGET_USER" "$client_source" "$bin_dir/tile_right_client.py"
-    install -m 0644 -o "$TARGET_USER" -g "$TARGET_USER" "$logging_source" "$bin_dir/logging_setup.py"
+    install -D -m 0755 -o "$TARGET_USER" -g "$TARGET_USER" "$bin_source" "$bin_target"
   else
-    install -m 0755 "$script_source" "$bin_dir/ctrl_back_tile_right.py"
-    install -m 0644 "$state_source" "$bin_dir/ctrl_back_event_state.py"
-    install -m 0644 "$paths_source" "$bin_dir/input_device_paths.py"
-    install -m 0644 "$client_source" "$bin_dir/tile_right_client.py"
-    install -m 0644 "$logging_source" "$bin_dir/logging_setup.py"
+    install -D -m 0755 "$bin_source" "$bin_target"
   fi
+  run_as_target rm -f \
+    "$bin_dir/ctrl_back_tile_right.py" \
+    "$bin_dir/ctrl_back_event_state.py" \
+    "$bin_dir/input_device_paths.py" \
+    "$bin_dir/tile_right_client.py" \
+    "$bin_dir/logging_setup.py"
   run_as_target tee "$service_target" >/dev/null <<EOF
 [Unit]
 Description=Ctrl + browser-back window right-half tiler
@@ -424,7 +397,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=$bin_dir/ctrl_back_tile_right.py
+ExecStart=$bin_target tiler
 Restart=on-failure
 RestartSec=2
 Environment=CTRL_BACK_TILE_DEVICE=${device_filter:-}

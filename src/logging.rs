@@ -67,3 +67,10 @@ pub fn warn(message: impl AsRef<str>) {
 pub fn error(message: impl AsRef<str>) {
     write_line("ERROR", message.as_ref());
 }
+
+/// Log a service-facing line to stderr (journald) and the file sink.
+pub fn service(level: &str, message: impl AsRef<str>) {
+    let message = message.as_ref();
+    eprintln!("{level} [ctrl-back-window-tiler] {message}");
+    write_line(level, message);
+}

@@ -2,10 +2,14 @@
 name = "wss-tools"
 version = "0.1.0"
 edition = "2021"
-description = "GSettings string-array helper for linux-workspaces-setup"
+description = "Workspace installer helpers and the window-placement tiler"
 license = "MIT"
 publish = false
 
 [[bin]]
 name = "wss-tools"
 path = "src/main.rs"
+
+[dependencies]
+evdev = "0.12"
+nix = "0.23"
