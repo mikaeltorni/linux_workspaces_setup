@@ -71,6 +71,13 @@ uninstall_ctrl_back_tiler() {
   msg "Removing Ctrl+Back window tiler service"
   run_as_target systemctl --user disable --now ctrl-back-window-tiler.service 2>/dev/null || true
   run_as_target rm -f "$TARGET_HOME/.config/systemd/user/ctrl-back-window-tiler.service"
+  run_as_target rm -f \
+    "$TARGET_HOME/.local/bin/wss-tools" \
+    "$TARGET_HOME/.local/bin/ctrl_back_tile_right.py" \
+    "$TARGET_HOME/.local/bin/ctrl_back_event_state.py" \
+    "$TARGET_HOME/.local/bin/input_device_paths.py" \
+    "$TARGET_HOME/.local/bin/tile_right_client.py" \
+    "$TARGET_HOME/.local/bin/logging_setup.py"
   run_as_target systemctl --user daemon-reload 2>/dev/null || true
 }
 uninstall_workspace_popup() { msg "Removing numbered workspace popup extension"; ws_remove_extension workspace-number-indicator@local; }

@@ -93,23 +93,15 @@ list.
 ## Run tests
 
 ```bash
-python3 -m py_compile configs/window-hotkeys/ctrl_back_tile_right.py \
-  configs/window-hotkeys/ctrl_back_event_state.py \
-  configs/window-hotkeys/input_device_paths.py \
-  configs/window-hotkeys/tile_right_client.py
 bash -n install.sh lib/workspace_setup.sh lib/lifecycle.sh
 cargo test
 python3 -m pytest tests
 ```
 
-The Ctrl+Back service implementation is split across:
-
-- `ctrl_back_tile_right.py`, which owns evdev resources and GNOME integration;
-- `ctrl_back_event_state.py`, which owns Ctrl/Back state transitions and
-  forwarding/suppression decisions;
-- `tile_right_client.py`, which owns the D-Bus call into the GNOME Shell
-  extension's right-half tiling API; and
-- `input_device_paths.py`, which owns deterministic input-device ordering.
+The Ctrl+Back service is `wss-tools tiler` (`src/tiler.rs`): it grabs the
+selected pointer, forwards other events through a virtual uinput device, and
+calls the monitor-window-hotkeys D-Bus `TileRightHalf` method. `wss-tools
+list-pointers` feeds the installer device picker.
 
 ## Deployment notes
 
