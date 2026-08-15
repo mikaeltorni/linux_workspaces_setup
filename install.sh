@@ -2,8 +2,8 @@
 # install.sh — Ubuntu GNOME workspaces and hotkeys setup.
 #
 # This installer owns workspace behavior that was previously split across the
-# broader desktop setup chain: monitor/window management hotkeys, Ctrl+Back
-# tiling, Albert bindings, app
+# broader desktop setup chain: monitor/window management configuration, Albert
+# bindings, app
 # workspace rules, and auto-move-window workspace placement.
 #
 # Usage:

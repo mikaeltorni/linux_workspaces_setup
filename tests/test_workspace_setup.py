@@ -37,8 +37,9 @@ CONFIG_DIR={config_dir!r}
 TARGET_USER=$(id -un)
 TARGET_HOME=/tmp/linux-workspaces-test-home
 source lib/workspace_setup.sh
+source lib/lifecycle.sh
 declare -F configure_workspace_send_extension_bindings configure_automatic_window_tiling >/dev/null
-declare -F configure_ctrl_back_window_tiler_service configure_app_rules_extension configure_auto_move_windows >/dev/null
+declare -F configure_app_rules_extension configure_auto_move_windows migrate_legacy_ctrl_back_tiler >/dev/null
 """.format(script_dir=str(ROOT_DIR), config_dir=str(ROOT_DIR / "configs"))
     )
     assert proc.returncode == 0, proc.stderr
@@ -309,7 +310,7 @@ configure_albert_keybindings >/dev/null 2>&1
 
 
 def test_workspace_assets_and_delegation_are_present():
-    assert (ROOT_DIR / "src/tiler.rs").is_file()
+    assert not (ROOT_DIR / "src/tiler.rs").exists()
     assert (ROOT_DIR / "src/main.rs").is_file()
     assert not (ROOT_DIR / "configs/window-hotkeys/ctrl_back_tile_right.py").exists()
     assert not (ROOT_DIR / "configs/window-hotkeys/ctrl_back_event_state.py").exists()
@@ -317,6 +318,16 @@ def test_workspace_assets_and_delegation_are_present():
     setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
     assert "AUTOMATIC_WINDOW_TILING_BINDING:-<Super>t" in setup
     assert 'bash "$installer" "$AUTOMATIC_WINDOW_TILING_BINDING"' in setup
+
+
+def test_duplicate_pointer_tiler_is_not_a_workspace_component():
+    manifest = (ROOT_DIR / "installer/components.sh").read_text(encoding="utf-8")
+    setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
+    defaults = (ROOT_DIR / "installation_configs/default.json").read_text(encoding="utf-8")
+    assert "ctrl_back_tiler|" not in manifest
+    assert '"ctrl_back_tiler"' not in defaults
+    assert "configure_ctrl_back_window_tiler_service" not in setup
+    assert 'ISC_PREFLIGHT="migrate_legacy_ctrl_back_tiler"' in manifest
 
 
 def test_monitor_window_extension_extracted_but_send_mode_config_stays():
