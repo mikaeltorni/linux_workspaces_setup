@@ -350,65 +350,6 @@ configure_automatic_window_tiling() {
   TARGET_USER="$TARGET_USER" bash "$installer" "$AUTOMATIC_WINDOW_TILING_BINDING"
 }
 
-select_input_device() {
-  msg "Detecting pointing devices with back buttons"
-  local device_list
-  device_list="$(wss_bin list-pointers 2>/dev/null || true)"
-  if [ -z "$device_list" ]; then
-    msg "No pointing devices with back buttons detected; tiler service will be skipped."
-    return 1
-  fi
-  local selected
-  selected="$(printf '%s\n' "$device_list" | head -1)"
-  SELECTED_INPUT_DEVICE="${selected%%|*}"
-  SELECTED_INPUT_DEVICE_NAME="${selected##*|}"
-  msg "Selected pointing device: $SELECTED_INPUT_DEVICE_NAME ($SELECTED_INPUT_DEVICE)"
-}
-
-configure_ctrl_back_window_tiler_service() {
-  msg "Installing Ctrl + browser-back window tiler service"
-  if ! ensure_wss_bin; then
-    msg "wss-tools binary missing; skipping Ctrl-back tiler service."
-    return 0
-  fi
-  local bin_source="$WSS_BIN"
-  local bin_dir="$TARGET_HOME/.local/bin"
-  local bin_target="$bin_dir/wss-tools"
-  local service_target="$TARGET_HOME/.config/systemd/user/ctrl-back-window-tiler.service"
-  local device_filter="${SELECTED_INPUT_DEVICE:-}"
-
-  run_as_target mkdir -p "$bin_dir" "$(dirname "$service_target")"
-  if is_root; then
-    install -D -m 0755 -o "$TARGET_USER" -g "$TARGET_USER" "$bin_source" "$bin_target"
-  else
-    install -D -m 0755 "$bin_source" "$bin_target"
-  fi
-  run_as_target rm -f \
-    "$bin_dir/ctrl_back_tile_right.py" \
-    "$bin_dir/ctrl_back_event_state.py" \
-    "$bin_dir/input_device_paths.py" \
-    "$bin_dir/tile_right_client.py" \
-    "$bin_dir/logging_setup.py"
-  run_as_target tee "$service_target" >/dev/null <<EOF
-[Unit]
-Description=Ctrl + browser-back window right-half tiler
-After=graphical-session.target
-PartOf=graphical-session.target
-
-[Service]
-Type=simple
-ExecStart=$bin_target tiler
-Restart=on-failure
-RestartSec=2
-Environment=CTRL_BACK_TILE_DEVICE=${device_filter:-}
-
-[Install]
-WantedBy=default.target
-EOF
-  reload_systemd_daemon
-  enable_systemd_service ctrl-back-window-tiler.service
-}
-
 configure_workspace_number_popup_extension() {
   msg "Installing local GNOME Shell numbered workspace popup"
   local ext_id="workspace-number-indicator@local"
@@ -721,4 +662,3 @@ EOF
   enable_systemd_service xmousepasteblock.service
   run_as_target systemctl --user start xmousepasteblock.service || true
 }
-

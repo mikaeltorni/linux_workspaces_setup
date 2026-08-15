@@ -25,7 +25,7 @@ See the full cross-repository map in
 
 ## Ownership map
 
-- From `linux_hotkey_setup`: Albert bindings, monitor/window hotkeys extension, numbered workspace popup, Ctrl+Back window tiler service, and xmousepasteblock clipboard-lock wiring.
+- Owned solely by `linux_hotkey_setup`: screenshot and numbered workspace switch/move shortcuts plus the pointer-driven window-placement tiler. This repository never installs a second input grabber.
 - Kept in `linux_hotkey_setup`: screenshot and numbered workspace switch/move shortcuts.
 - From `linux_configuration_setup`: app-rules GNOME Shell extension that assigns apps to workspaces or sticky windows. The master installer's `[p]` menu action writes additional rules to `~/.config/app-rules/user-rules.json` (queried back with `install.sh --list-selected-sticky-apps`); Spotify and Discord remain installation-default sticky rules even when that file exists.
 - From `ubuntu_2404_taskbar_system_status_monitor`: Window Rules/Workspace rules behavior and Auto-move-windows workspace placement configuration. The Ubuntu taskbar repository keeps the resource monitor/taskbar UI pieces only.
@@ -98,10 +98,10 @@ cargo test
 python3 -m pytest tests
 ```
 
-The Ctrl+Back service is `wss-tools tiler` (`src/tiler.rs`): it grabs the
-selected pointer, forwards other events through a virtual uinput device, and
-calls the monitor-window-hotkeys D-Bus `TileRightHalf` method. `wss-tools
-list-pointers` feeds the installer device picker.
+The Ctrl+Back/window-placement service is installed only by
+`linux_hotkey_setup`. On upgrade this installer removes its obsolete
+`ctrl-back-window-tiler.service`, preventing two repositories from competing
+for the same physical pointer.
 
 ## Deployment notes
 
@@ -129,7 +129,6 @@ or none, and **Enter** installs the selection. Components:
 |---|---|---|
 | `workspace_send_mode` | Send active window to workspace (Super+U key map) | on |
 | `automatic_window_tiling` | Automatic same-app window tiling | on |
-| `ctrl_back_tiler` | Ctrl+Back window tiler service | on |
 | `workspace_popup` | Numbered workspace popup extension | on |
 | `albert` | Albert launcher toggle binding | on |
 | `app_rules` | App-to-workspace window rules extension | on |

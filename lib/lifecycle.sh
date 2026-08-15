@@ -40,7 +40,6 @@ detect_albert()                  { ws_mediakeys_has 'albert-aring'; }
 # keys off the extension's presence.
 detect_workspace_send_mode()     { [ -d "$(ws_ext_dir monitor-window-hotkeys@local)" ]; }
 detect_automatic_window_tiling() { [ -d "$(ws_ext_dir automatic-window-tiling@local)" ]; }
-detect_ctrl_back_tiler()         { [ -f "$TARGET_HOME/.config/systemd/user/ctrl-back-window-tiler.service" ]; }
 detect_workspace_popup()         { [ -d "$(ws_ext_dir workspace-number-indicator@local)" ]; }
 detect_app_rules()               { [ -d "$(ws_ext_dir app-rules@local)" ]; }
 detect_auto_move_windows() {
@@ -67,18 +66,17 @@ uninstall_workspace_send_mode() {
   done
 }
 uninstall_automatic_window_tiling(){ msg "Uninstalling automatic window tiling (delegated)"; ws_delegate linux_automatic_window_tiling --uninstall keybinding,per_app_widths,portrait_stacking; }
-uninstall_ctrl_back_tiler() {
-  msg "Removing Ctrl+Back window tiler service"
-  run_as_target systemctl --user disable --now ctrl-back-window-tiler.service 2>/dev/null || true
-  run_as_target rm -f "$TARGET_HOME/.config/systemd/user/ctrl-back-window-tiler.service"
-  run_as_target rm -f \
-    "$TARGET_HOME/.local/bin/wss-tools" \
-    "$TARGET_HOME/.local/bin/ctrl_back_tile_right.py" \
-    "$TARGET_HOME/.local/bin/ctrl_back_event_state.py" \
-    "$TARGET_HOME/.local/bin/input_device_paths.py" \
-    "$TARGET_HOME/.local/bin/tile_right_client.py" \
-    "$TARGET_HOME/.local/bin/logging_setup.py"
-  run_as_target systemctl --user daemon-reload 2>/dev/null || true
+migrate_legacy_ctrl_back_tiler() {
+  local unit="ctrl-back-window-tiler.service"
+  local unit_file="$TARGET_HOME/.config/systemd/user/$unit"
+  local receipt="${XDG_STATE_HOME:-$TARGET_HOME/.local/state}/isc/receipts/linux_workspaces_setup/ctrl_back_tiler"
+  if [ -f "$unit_file" ] || run_as_target systemctl --user is-enabled "$unit" >/dev/null 2>&1; then
+    msg "Removing obsolete duplicate Ctrl+Back tiler; linux_hotkey_setup owns the pointer service"
+    run_as_target systemctl --user disable --now "$unit" 2>/dev/null || true
+    run_as_target rm -f "$unit_file"
+    run_as_target systemctl --user daemon-reload 2>/dev/null || true
+  fi
+  run_as_target rm -f "$receipt"
 }
 uninstall_workspace_popup() { msg "Removing numbered workspace popup extension"; ws_remove_extension workspace-number-indicator@local; }
 uninstall_app_rules()       { msg "Removing app-rules extension"; ws_remove_extension app-rules@local; }

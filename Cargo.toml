@@ -2,7 +2,7 @@
 name = "wss-tools"
 version = "0.1.0"
 edition = "2021"
-description = "Workspace installer helpers and the window-placement tiler"
+description = "Workspace installer helpers"
 license = "MIT"
 publish = false
 
@@ -11,5 +11,3 @@ name = "wss-tools"
 path = "src/main.rs"
 
 [dependencies]
-evdev = "0.12"
-nix = "0.23"
