@@ -462,6 +462,7 @@ write_app_rules_sticky_rules >/dev/null
 def test_list_selected_sticky_apps_reads_rules_file():
     """--list-selected-sticky-apps reports the appIds in the user-rules file."""
     with tempfile.TemporaryDirectory() as td:
+        root = str(ROOT_DIR)
         home = Path(td)
         rules_dir = home / ".config" / "app-rules"
         rules_dir.mkdir(parents=True)
@@ -471,6 +472,7 @@ def test_list_selected_sticky_apps_reads_rules_file():
         proc = run_bash(
             f"""
 set -euo pipefail
+SCRIPT_DIR={root!r}
 TARGET_HOME={td!r}
 eval "$(sed -n '/^list_selected_sticky_apps()/,/^}}/p' install.sh)"
 list_selected_sticky_apps
@@ -485,11 +487,13 @@ list_selected_sticky_apps
 def test_list_selected_sticky_apps_falls_back_to_legacy_when_unwritten():
     """Without a rules file, a deployed extension reports the built-in fallback."""
     with tempfile.TemporaryDirectory() as td:
+        root = str(ROOT_DIR)
         ext_dir = Path(td) / ".local/share/gnome-shell/extensions/app-rules@local"
         ext_dir.mkdir(parents=True)
         proc = run_bash(
             f"""
 set -euo pipefail
+SCRIPT_DIR={root!r}
 TARGET_HOME={td!r}
 eval "$(sed -n '/^list_selected_sticky_apps()/,/^}}/p' install.sh)"
 list_selected_sticky_apps
