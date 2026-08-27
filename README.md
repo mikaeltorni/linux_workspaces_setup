@@ -27,7 +27,8 @@ See the full cross-repository map in
 
 - Owned solely by `linux_hotkey_setup`: screenshot and numbered workspace switch/move shortcuts plus the pointer-driven window-placement tiler. This repository never installs a second input grabber.
 - Kept in `linux_hotkey_setup`: screenshot and numbered workspace switch/move shortcuts.
-- From `linux_configuration_setup`: app-rules GNOME Shell extension that assigns apps to workspaces or sticky windows. The master installer's `[p]` menu action writes additional rules to `~/.config/app-rules/user-rules.json` (queried back with `install.sh --list-selected-sticky-apps`); Spotify and Discord remain installation-default sticky rules even when that file exists.
+- From `linux_configuration_setup`: app-rules GNOME Shell extension that assigns apps to workspaces, sticky windows, or a fixed display monitor. The master installer's `[p]` menu action writes additional rules to `~/.config/app-rules/user-rules.json` (queried back with `install.sh --list-selected-sticky-apps`); Spotify and Discord remain installation-default sticky rules even when that file exists.
+- The master installer's `[m]` menu action writes per-application monitor rules into the same file (queried back with `install.sh --list-selected-app-monitors`), so an application opens on the chosen display on every reboot. Both dimensions are merged by `scripts/app_rules_rules.py`: a run that manages only one of them preserves the other's rules instead of overwriting the file.
 - From `ubuntu_2404_taskbar_system_status_monitor`: Window Rules/Workspace rules behavior and Auto-move-windows workspace placement configuration. The Ubuntu taskbar repository keeps the resource monitor/taskbar UI pieces only.
 - Kept separate but invoked by this repo: automatic same-application window tiling in `linux_automatic_window_tiling`.
 

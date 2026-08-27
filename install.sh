@@ -41,19 +41,39 @@ source "$SCRIPT_DIR/lib/lifecycle.sh"
 # list_selected_sticky_apps - Print the .desktop ids currently configured to
 # stay on all workspaces, one per line (the master menu's [p] restore source).
 #
-# The user-rules file is installer-owned and contains only sticky rules, so
-# every appId in it is a sticky candidate. While the file has never been
-# written, the app-rules extension applies its built-in legacy fallback
-# (Spotify + Discord), so report those when the extension is deployed.
+# The user-rules file is installer-owned but now also carries monitor-only
+# rules, so it is parsed as JSON and only genuinely sticky rules are reported.
+# While the file has never been written, the app-rules extension applies its
+# built-in legacy fallback (Spotify + Discord), so report those when the
+# extension is deployed.
 list_selected_sticky_apps() {
   local file="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
   if [ -f "$file" ]; then
-    grep -oE '"[^"]+\.desktop"' "$file" | tr -d '"' || true
+    python3 "${APP_RULES_RULES_PY:-$SCRIPT_DIR/scripts/app_rules_rules.py}" \
+      --file "$file" list-sticky 2>/dev/null || true
     return 0
   fi
   if [ -d "$TARGET_HOME/.local/share/gnome-shell/extensions/app-rules@local" ]; then
     printf 'spotify.desktop\nspotify_spotify.desktop\ndiscord.desktop\ndiscord_discord.desktop\n'
   fi
+}
+
+# list_selected_app_monitors - Print the current per-application monitor
+# assignments as "pipe-separated .desktop ids<TAB>monitor number", one per line
+# (the master menu's [m] restore source).
+#
+# Only applications the installer actually pinned are reported; every other
+# application keeps the session's own placement (active-monitor-placement).
+#
+# Exits non-zero while no master-driven run has written the rules file, which
+# tells the master menu to keep its metadata defaults (Spotify/Discord on
+# monitor 1). Once the file exists it is authoritative, including when it pins
+# nothing at all — otherwise clearing a pin would silently come back.
+list_selected_app_monitors() {
+  local file="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
+  [ -f "$file" ] || return 1
+  python3 "${APP_RULES_RULES_PY:-$SCRIPT_DIR/scripts/app_rules_rules.py}" \
+    --file "$file" list-monitors 2>/dev/null || true
 }
 
 list_selected_app_workspaces() {
@@ -138,6 +158,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   case "${1:-}" in
     --list-selected-app-workspaces) list_selected_app_workspaces; exit $? ;;
     --list-selected-sticky-apps) list_selected_sticky_apps; exit $? ;;
+    --list-selected-app-monitors) list_selected_app_monitors; exit $? ;;
     --list-components|--export-selection|--detect|--help|-h|--uninstall|--uninstall=*) component_main "$@"; exit $? ;;
   esac
   main "$@"

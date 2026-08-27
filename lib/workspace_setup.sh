@@ -437,58 +437,78 @@ EOF
 }
 
 # Installer-owned dynamic rule file read by app-rules@local at enable time.
-# The master menu's [p] (persistent on all workspaces) selection is serialized
-# here; while it does not exist the extension keeps its built-in legacy sticky
-# fallback (Spotify + Discord), so clean installs behave as before.
+# The master menu's [p] (persistent on all workspaces) and [m] (fixed display
+# monitor) selections are serialized here; while it does not exist the extension
+# keeps its built-in legacy sticky fallback (Spotify + Discord), so clean
+# installs behave as before.
 APP_RULES_USER_RULES_FILE="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
+# Helper owning the JSON format (merging sticky and monitor rules, reading them
+# back). Overridable so tests can point at a checkout copy.
+APP_RULES_RULES_PY="${APP_RULES_RULES_PY:-$SCRIPT_DIR/scripts/app_rules_rules.py}"
 
-# write_app_rules_sticky_rules - Serialize the master [p] selection to the
-# app-rules user-rules file.
+# app_rules_monitor_layout - Print the current display layout as the TSV rows
+# app_rules_rules.py records alongside each monitor rule (connector + logical
+# geometry), so a rule keeps pointing at the same physical screen even if Mutter
+# renumbers its monitors later.
+#
+# Uses the framework's shared isc_list_monitors when available. Detection
+# failure is not fatal: rules are then stored with the monitor number alone.
+#
+# Returns: 0 always; prints nothing when the layout cannot be detected.
+app_rules_monitor_layout() {
+  declare -F isc_list_monitors >/dev/null 2>&1 || return 0
+  isc_list_monitors || true
+}
+
+# write_app_rules_user_rules - Serialize the master [p] and [m] selections to
+# the app-rules user-rules file.
 #
 # Reads SELECTED_STICKY_APPS (semicolon-separated groups of pipe-separated
-# .desktop candidates for the same app) and rewrites the whole file, which is
-# exclusively installer-owned. Runs only when MANAGED_STICKY_APPS is set (the
-# master drove this run); a standalone run leaves any existing selection
-# untouched. Writing an empty rules list is meaningful: it suppresses the
-# extension's built-in sticky fallback once the menu becomes the authority.
+# .desktop candidates for the same app) and SELECTED_APP_MONITORS (the same
+# groups as "group=monitor_number"). Each dimension is rewritten only when the
+# master exported its MANAGED_* marker for this run; the other one is preserved
+# from the existing file, so configuring one feature never drops the other.
+# A standalone run that manages neither leaves the file untouched. Writing an
+# empty sticky list is meaningful: it suppresses the extension's built-in sticky
+# fallback once the menu becomes the authority.
 #
-# Returns: 0 always (skipped or written).
-write_app_rules_sticky_rules() {
-  if [[ ! ${MANAGED_STICKY_APPS+x} ]]; then
-    log_debug "write_app_rules_sticky_rules: MANAGED_STICKY_APPS unset; keeping existing sticky rules"
+# Returns: 0 always (skipped, written, or degraded to a warning).
+write_app_rules_user_rules() {
+  local -a flags=()
+  [[ ${MANAGED_STICKY_APPS+x} ]] && flags+=(--managed-sticky)
+  [[ ${MANAGED_APP_MONITORS+x} ]] && flags+=(--managed-monitors)
+  if [ "${#flags[@]}" -eq 0 ]; then
+    log_debug "write_app_rules_user_rules: no managed selection exported; keeping existing rules"
     return 0
   fi
-  msg "Writing all-workspaces (sticky) application rules"
-  local group candidate ids entries=""
-  local -a groups=()
-  IFS=';' read -r -a groups <<<"${SELECTED_STICKY_APPS:-}"
-  for group in "${groups[@]}"; do
-    [ -n "$group" ] || continue
-    ids=""
-    for candidate in ${group//|/ }; do
-      ids+="${ids:+, }\"$candidate\""
-    done
-    entries+="${entries:+,
-    }{ \"appIds\": [$ids], \"sticky\": true }"
-    log_line INFO "sticky rule selected: $group"
-  done
-  run_as_target mkdir -p "$(dirname "$APP_RULES_USER_RULES_FILE")"
-  run_as_target tee "$APP_RULES_USER_RULES_FILE" >/dev/null <<EOF
-{
-  "rules": [
-    ${entries}
-  ]
+  if [ ! -f "$APP_RULES_RULES_PY" ]; then
+    log_line WARN "app_rules_rules.py not found at $APP_RULES_RULES_PY; keeping existing rules"
+    return 0
+  fi
+  msg "Writing app-rules application rules (all-workspaces + monitor placement)"
+  local summary
+  if ! summary="$(run_as_target python3 "$APP_RULES_RULES_PY" \
+      --file "$APP_RULES_USER_RULES_FILE" write \
+      --sticky "${SELECTED_STICKY_APPS:-}" \
+      --monitors "${SELECTED_APP_MONITORS:-}" \
+      --monitor-layout "$(app_rules_monitor_layout)" \
+      "${flags[@]}" 2>&1)"; then
+    log_line WARN "failed to write $APP_RULES_USER_RULES_FILE: $summary"
+    return 0
+  fi
+  log_line INFO "wrote $APP_RULES_USER_RULES_FILE — $summary"
 }
-EOF
-  log_line INFO "wrote $APP_RULES_USER_RULES_FILE ($(( ${#groups[@]} )) selected group(s))"
-}
+
+# write_app_rules_sticky_rules - Backwards-compatible alias kept for callers
+# (and repository tests) that predate monitor placement rules.
+write_app_rules_sticky_rules() { write_app_rules_user_rules; }
 
 configure_app_rules_extension() {
   msg "Deploying app-rules@local GNOME Shell extension"
   local ext_src="$CONFIG_DIR/gnome-extensions/app-rules@local"
   local ext_dst="$TARGET_HOME/.local/share/gnome-shell/extensions/app-rules@local"
 
-  write_app_rules_sticky_rules
+  write_app_rules_user_rules
 
   if [ ! -d "$ext_src" ]; then
     msg "app-rules source not found at $ext_src; skipping."
