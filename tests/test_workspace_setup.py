@@ -45,6 +45,35 @@ declare -F configure_app_rules_extension configure_auto_move_windows migrate_leg
     assert proc.returncode == 0, proc.stderr
 
 
+def test_standalone_auto_move_places_smartgit_on_workspace_three():
+    """Standalone app placement keeps SmartGit beside GitKraken on workspace 3."""
+    with tempfile.TemporaryDirectory() as td:
+        proc = run_bash(
+            """
+set -euo pipefail
+TARGET_USER=$(id -un)
+TARGET_HOME={home!r}
+source lib/workspace_setup.sh
+install_auto_move_windows_extension() {{ return 0; }}
+enable_shell_extension() {{ :; }}
+gsettings_key_exists() {{ return 0; }}
+first_existing_desktop() {{
+  case "$*" in
+    *gitkraken*) printf '%s\\n' gitkraken_gitkraken.desktop ;;
+    *smartgit*) printf '%s\\n' smartgit.desktop ;;
+  esac
+}}
+append_gsettings_list() {{ printf '%s\\n' "$3"; }}
+unset MANAGED_APP_WORKSPACES SELECTED_APP_WORKSPACES
+configure_auto_move_windows
+""".format(home=str(Path(td) / "home")),
+            env=_sticky_env(td),
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "gitkraken_gitkraken.desktop:2" in proc.stdout
+        assert "smartgit.desktop:2" in proc.stdout
+
+
 def test_hotkey_components_are_owned_by_hotkey_repo():
     """Screenshot and numbered workspace bindings must not be installed here."""
     setup = (ROOT_DIR / "lib" / "workspace_setup.sh").read_text(encoding="utf-8")
