@@ -554,6 +554,14 @@ def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_two():
     assert "{ appIds: ['smartgit.desktop'], workspace: 2, monitor: 2 }" in source
 
 
+def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():
+    """GitKraken's built-in aliases carry the same fixed monitor placement."""
+    source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
+        encoding="utf-8"
+    )
+    assert "{ appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 2, monitor: 2 }" in source
+
+
 if __name__ == "__main__":
     tests = [t for name, t in sorted(globals().items()) if name.startswith("test_") and callable(t)]
     failed = 0
