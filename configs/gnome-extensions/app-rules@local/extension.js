@@ -45,6 +45,7 @@ const MONITOR_RETRY_DELAYS_MS = [0, 150, 400, 900, 1600];
 const RULES = [
   { appIds: ['cursor.desktop'], workspace: 0 },
   { appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 2 },
+  { appIds: ['smartgit.desktop'], workspace: 2, monitor: 2 },
   { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], workspace: 7 },
   { appIds: ['chatgpt.desktop'], workspace: 0 },
   { appIds: ['com.obsproject.Studio.desktop', 'obs.desktop'], workspace: 7 },

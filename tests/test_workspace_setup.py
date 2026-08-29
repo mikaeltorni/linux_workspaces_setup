@@ -546,6 +546,14 @@ def test_app_rules_extension_loads_user_rules_dynamically():
     assert "sticky" not in rules_block
 
 
+def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_two():
+    """SmartGit's built-in rule carries both requested placement dimensions."""
+    source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
+        encoding="utf-8"
+    )
+    assert "{ appIds: ['smartgit.desktop'], workspace: 2, monitor: 2 }" in source
+
+
 if __name__ == "__main__":
     tests = [t for name, t in sorted(globals().items()) if name.startswith("test_") and callable(t)]
     failed = 0
