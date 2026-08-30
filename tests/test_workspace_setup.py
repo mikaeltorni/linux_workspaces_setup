@@ -546,12 +546,12 @@ def test_app_rules_extension_loads_user_rules_dynamically():
     assert "sticky" not in rules_block
 
 
-def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_two():
-    """SmartGit's built-in rule carries both requested placement dimensions."""
+def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_three():
+    """SmartGit opens on visible workspace 3 and monitor 3."""
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
         encoding="utf-8"
     )
-    assert "{ appIds: ['smartgit.desktop'], workspace: 3, monitor: 2 }" in source
+    assert "{ appIds: ['smartgit.desktop'], workspace: 3, monitor: 3 }" in source
 
 
 def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():
