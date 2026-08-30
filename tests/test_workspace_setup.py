@@ -554,6 +554,14 @@ def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_three():
     assert "{ appIds: ['smartgit.desktop'], workspace: 3, monitor: 3 }" in source
 
 
+def test_builtin_monkeytype_rule_pins_workspace_eight():
+    """Monkeytype and its Chrome PWA alias open on visible workspace 8."""
+    source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
+        encoding="utf-8"
+    )
+    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], workspace: 8 }" in source
+
+
 def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():
     """GitKraken's built-in aliases carry the same fixed monitor placement."""
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
