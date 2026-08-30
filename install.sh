@@ -65,15 +65,18 @@ list_selected_sticky_apps() {
 # Only applications the installer actually pinned are reported; every other
 # application keeps the session's own placement (active-monitor-placement).
 #
-# Exits non-zero while no master-driven run has written the rules file, which
-# tells the master menu to keep its metadata defaults (Spotify/Discord on
-# monitor 1). Once the file exists it is authoritative, including when it pins
-# nothing at all — otherwise clearing a pin would silently come back.
+# Exits non-zero while no master-driven run has written the rules file. Legacy
+# sticky-only files predate monitor management, so the helper overlays the
+# Spotify/Discord monitor-1 defaults until a current writer records that monitor
+# choices were explicitly managed. The marker then makes even an empty monitor
+# list authoritative, so clearing every pin does not bring defaults back.
 list_selected_app_monitors() {
   local file="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
   [ -f "$file" ] || return 1
   python3 "${APP_RULES_RULES_PY:-$SCRIPT_DIR/scripts/app_rules_rules.py}" \
-    --file "$file" list-monitors 2>/dev/null || true
+    --file "$file" list-monitors \
+    --legacy-defaults 'spotify.desktop|spotify_spotify.desktop=1;discord.desktop|discord_discord.desktop=1' \
+    2>/dev/null || true
 }
 
 list_selected_app_workspaces() {

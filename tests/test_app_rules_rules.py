@@ -53,6 +53,18 @@ def read_rules(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))["rules"]
 
 
+def read_document(path):
+    """Read the complete persisted app-rules document.
+
+    Args:
+        path: Path to the user-rules.json file.
+
+    Returns:
+        dict: The parsed document, including management metadata.
+    """
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
 def rule_for(rules, app_id):
     """Find the rule covering an application id.
 
@@ -84,6 +96,7 @@ def test_write_records_monitor_with_connector_and_geometry():
         assert spotify["monitorConnector"] == "DP-4"
         assert spotify["monitorGeometry"]["width"] == 3840
         assert "sticky" not in spotify
+        assert read_document(path)["managed"]["monitors"] is True
 
 
 def test_monitor_run_preserves_unmanaged_sticky_rules():
@@ -130,6 +143,9 @@ def test_managed_run_clears_deselected_assignments():
         proc = run_script(path, "write", "--managed-monitors", "--monitors", "")
         assert proc.returncode == 0, proc.stderr
         assert read_rules(path) == []
+        listed = run_script(path, "list-monitors")
+        assert listed.returncode == 0, listed.stderr
+        assert listed.stdout == ""
 
 
 def test_one_rule_per_application_carries_both_dimensions():
@@ -166,6 +182,44 @@ def test_list_monitors_round_trips_the_written_assignments():
         )
         assert pairs[SPOTIFY] == "1"
         assert pairs[DISCORD] == "2"
+
+
+def test_legacy_file_does_not_override_monitor_defaults():
+    """Pre-monitor files must let the master retain monitor-1 defaults."""
+    with tempfile.TemporaryDirectory() as td:
+        path = Path(td) / "user-rules.json"
+        path.write_text(json.dumps({"rules": [
+            {"appIds": SPOTIFY.split("|"), "sticky": True},
+            {"appIds": DISCORD.split("|"), "sticky": True},
+        ]}), encoding="utf-8")
+
+        proc = run_script(
+            path,
+            "list-monitors",
+            "--legacy-defaults",
+            f"{SPOTIFY}=1;{DISCORD}=1",
+        )
+
+        assert proc.returncode == 0, proc.stderr
+        pairs = dict(line.split("\t") for line in proc.stdout.splitlines())
+        assert pairs[SPOTIFY] == "1"
+        assert pairs[DISCORD] == "1"
+
+
+def test_sticky_only_write_preserves_managed_monitor_marker():
+    """A later sticky edit must not make explicit monitor clearing look legacy."""
+    with tempfile.TemporaryDirectory() as td:
+        path = Path(td) / "user-rules.json"
+        cleared = run_script(path, "write", "--managed-monitors", "--monitors", "")
+        assert cleared.returncode == 0, cleared.stderr
+
+        sticky = run_script(path, "write", "--managed-sticky", "--sticky", SPOTIFY)
+
+        assert sticky.returncode == 0, sticky.stderr
+        document = read_document(path)
+        assert document["managed"] == {"monitors": True, "sticky": True}
+        listed = run_script(path, "list-monitors")
+        assert listed.returncode == 0, listed.stderr
 
 
 def test_missing_file_lists_nothing_without_failing():
