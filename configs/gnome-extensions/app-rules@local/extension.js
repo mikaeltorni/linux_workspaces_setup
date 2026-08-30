@@ -16,6 +16,8 @@
 // so the rule survives Mutter renumbering its monitors; the stored number is
 // only a fallback. A rule that resolves to nothing is dropped rather than
 // guessed, leaving the window where the session put it.
+// Workspace rules likewise carry the 1-based number shown by GNOME and are
+// converted to Mutter's zero-based index only at the move boundary.
 //
 // Placement is retried briefly after create: Mutter frequently assigns the
 // final monitor after the first map, and moving an unmapped or
@@ -24,6 +26,7 @@
 // Components:
 //   - loadUserRules: Read installer-managed rules from user-rules.json.
 //   - getAppId: Resolve a window's desktop-file app id.
+//   - workspaceIndexForRule: Convert visible workspace numbers to Meta indexes.
 //   - resolveRuleMonitor: Map a rule's monitor number/geometry to a Meta index.
 //   - isWindowMoveSafe: Mapped + valid-monitor gate before Mutter move APIs.
 //   - applyMonitor: Move a window onto its assigned monitor (retried).
@@ -35,6 +38,7 @@ import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import { workspaceIndexForRule } from './workspacePolicy.js';
 
 // Retry delays (ms) after window-created for monitor moves. Mirrors
 // active-monitor-placement: early passes often see an unassigned monitor, and
@@ -43,12 +47,12 @@ const MONITOR_RETRY_DELAYS_MS = [0, 150, 400, 900, 1600];
 
 // Built-in workspace pins. Always active.
 const RULES = [
-  { appIds: ['cursor.desktop'], workspace: 0 },
-  { appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 2, monitor: 2 },
-  { appIds: ['smartgit.desktop'], workspace: 2, monitor: 2 },
-  { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], workspace: 7 },
-  { appIds: ['chatgpt.desktop'], workspace: 0 },
-  { appIds: ['com.obsproject.Studio.desktop', 'obs.desktop'], workspace: 7 },
+  { appIds: ['cursor.desktop'], workspace: 1 },
+  { appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 3, monitor: 2 },
+  { appIds: ['smartgit.desktop'], workspace: 3, monitor: 2 },
+  { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], workspace: 8 },
+  { appIds: ['chatgpt.desktop'], workspace: 1 },
+  { appIds: ['com.obsproject.Studio.desktop', 'obs.desktop'], workspace: 8 },
 ];
 
 // Legacy sticky rules, used ONLY while no user-rules.json exists. Once the
@@ -271,8 +275,8 @@ function applyMonitor(win, rule, timeouts) {
  * @param {Meta.Window} win - The window to act on. No-op for null or
  *   skip-taskbar (utility/override) windows.
  * @param {{workspace?: number, sticky?: boolean, monitor?: number}} rule - The
- *   rule to apply. `workspace` is a zero-based index; `sticky` pins to all
- *   workspaces; `monitor` is the installer's 1-based display number.
+ *   rule to apply. `workspace` is the visible one-based number; `sticky` pins
+ *   to all workspaces; `monitor` is the installer's 1-based display number.
  * @param {Array<number>} timeouts - Extension-owned list receiving GLib source
  *   ids for the deferred monitor placement retries.
  * @returns {void}
@@ -283,12 +287,16 @@ function applyRule(win, rule, timeouts) {
   }
 
   if (rule.workspace !== undefined) {
-    const targetIndex = Math.max(0, rule.workspace);
-    const wsMgr = global.workspace_manager;
-    if (wsMgr.n_workspaces > targetIndex) {
-      const ws = wsMgr.get_workspace_by_index(targetIndex);
-      if (ws) {
-        win.change_workspace(ws);
+    const targetIndex = workspaceIndexForRule(rule.workspace);
+    if (targetIndex < 0) {
+      console.log(`[app-rules] invalid workspace number ${JSON.stringify(rule.workspace)}; ignoring workspace move`);
+    } else {
+      const wsMgr = global.workspace_manager;
+      if (wsMgr.n_workspaces > targetIndex) {
+        const ws = wsMgr.get_workspace_by_index(targetIndex);
+        if (ws) {
+          win.change_workspace(ws);
+        }
       }
     }
   }

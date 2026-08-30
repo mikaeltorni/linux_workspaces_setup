@@ -551,7 +551,7 @@ def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_two():
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
         encoding="utf-8"
     )
-    assert "{ appIds: ['smartgit.desktop'], workspace: 2, monitor: 2 }" in source
+    assert "{ appIds: ['smartgit.desktop'], workspace: 3, monitor: 2 }" in source
 
 
 def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():
@@ -559,7 +559,34 @@ def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
         encoding="utf-8"
     )
-    assert "{ appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 2, monitor: 2 }" in source
+    assert "{ appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 3, monitor: 2 }" in source
+
+
+def test_app_rules_workspace_numbers_match_gnome_ui():
+    """Rule data is one-based while the policy converts to Meta indexes."""
+    extension = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
+        encoding="utf-8"
+    )
+    policy = ROOT_DIR / "configs/gnome-extensions/app-rules@local/workspacePolicy.js"
+    script = f"""
+import {{ workspaceIndexForRule }} from {policy.as_uri()!r};
+console.log([1, 3, 8, 0, 'bad'].map(workspaceIndexForRule).join(','));
+"""
+
+    proc = subprocess.run(
+        ["node", "--input-type=module", "-e", script],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == "0,2,7,-1,-1"
+    assert "workspaceIndexForRule(rule.workspace)" in extension
+    rules_block = extension.split("const RULES = [", 1)[1].split("];", 1)[0]
+    assert "workspace: 0" not in rules_block
+    assert "workspace: 2" not in rules_block
+    assert "workspace: 7" not in rules_block
 
 
 if __name__ == "__main__":
