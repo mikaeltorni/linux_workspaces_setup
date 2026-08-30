@@ -70,8 +70,8 @@ configure_auto_move_windows
             env=_sticky_env(td),
         )
         assert proc.returncode == 0, proc.stderr
-        assert "gitkraken_gitkraken.desktop:2" in proc.stdout
-        assert "smartgit.desktop:2" in proc.stdout
+        assert "gitkraken_gitkraken.desktop:3" in proc.stdout
+        assert "smartgit.desktop:3" in proc.stdout
 
 
 def test_hotkey_components_are_owned_by_hotkey_repo():

@@ -635,12 +635,13 @@ configure_auto_move_windows() {
     # Standalone runs do not receive the master menu's managed-selection
     # handoff. Preserve the built-in app-rules placement for GitKraken and
     # SmartGit here so either installer entry point puts both Git clients on
-    # visible workspace 3 (GNOME's zero-based setting is 2).
-    local gitkraken_desktop smartgit_desktop
+    # visible workspace 3. Auto Move Windows stores the same one-based number
+    # shown in its preferences and converts it to a zero-based index itself.
+    local gitkraken_desktop smartgit_desktop visible_workspace=3
     gitkraken_desktop="$(first_existing_desktop gitkraken.desktop gitkraken_gitkraken.desktop)"
-    [[ -n "$gitkraken_desktop" ]] && append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${gitkraken_desktop}:2"
+    [[ -n "$gitkraken_desktop" ]] && append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${gitkraken_desktop}:${visible_workspace}"
     smartgit_desktop="$(first_existing_desktop smartgit.desktop)"
-    [[ -n "$smartgit_desktop" ]] && append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${smartgit_desktop}:2"
+    [[ -n "$smartgit_desktop" ]] && append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${smartgit_desktop}:${visible_workspace}"
   fi
 }
 
