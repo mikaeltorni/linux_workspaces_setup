@@ -11,10 +11,15 @@ overwrite: a run that only manages sticky selections must preserve the monitor
 assignments already recorded, and vice versa. Doing that in Bash meant string
 surgery on JSON; this helper owns the format instead.
 
+The ``managed`` object records which dimensions have been explicitly written.
+This distinguishes an old sticky-only file from a current file where the user
+deliberately cleared every monitor assignment.
+
 Sub-commands:
     write - merge the managed dimensions into the file and print a summary.
     list-sticky - print the .desktop ids currently kept on all workspaces.
-    list-monitors - print ``group<TAB>monitor`` for current monitor rules.
+    list-monitors - print ``group<TAB>monitor`` for current monitor rules,
+                    overlaying requested defaults for legacy unmarked files.
 
 Application groups are pipe-separated .desktop candidates for one application
 ("spotify.desktop|spotify_spotify.desktop"), matching the installer's startup
@@ -166,6 +171,27 @@ def read_rules(path):
 
 
 @log_call(LOGGER)
+def read_managed_dimensions(path):
+    """Read dimension-management markers from the rules document.
+
+    Args:
+        path: Path to user-rules.json.
+
+    Returns:
+        set[str]: Names explicitly managed by a previous write.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            parsed = json.load(handle)
+    except (OSError, ValueError):
+        return set()
+    managed = parsed.get("managed") if isinstance(parsed, dict) else None
+    if not isinstance(managed, dict):
+        return set()
+    return {name for name in ("sticky", "monitors") if managed.get(name) is True}
+
+
+@log_call(LOGGER)
 def group_key(app_ids):
     """Build the stable identity of an application group.
 
@@ -247,12 +273,13 @@ def merge_rules(existing, sticky_groups, monitor_assignments, layout,
 
 
 @log_call(LOGGER)
-def write_rules(path, rules):
+def write_rules(path, rules, managed_dimensions):
     """Write the rules file atomically, creating parent directories.
 
     Args:
         path: Destination user-rules.json path.
         rules: Rule dictionaries to serialize.
+        managed_dimensions: Dimension names explicitly controlled by the menu.
 
     Returns:
         None.
@@ -261,7 +288,14 @@ def write_rules(path, rules):
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_suffix(".json.tmp")
     with open(temporary, "w", encoding="utf-8") as handle:
-        json.dump({"rules": rules}, handle, indent=2)
+        document = {
+            "managed": {
+                name: True for name in ("sticky", "monitors")
+                if name in managed_dimensions
+            },
+            "rules": rules,
+        }
+        json.dump(document, handle, indent=2)
         handle.write("\n")
     os.replace(temporary, destination)
 
@@ -276,6 +310,11 @@ def command_write(args):
     Returns:
         int: 0 on success.
     """
+    managed_dimensions = read_managed_dimensions(args.file)
+    if args.managed_sticky:
+        managed_dimensions.add("sticky")
+    if args.managed_monitors:
+        managed_dimensions.add("monitors")
     rules = merge_rules(
         read_rules(args.file),
         parse_groups(args.sticky),
@@ -284,7 +323,7 @@ def command_write(args):
         args.managed_sticky,
         args.managed_monitors,
     )
-    write_rules(args.file, rules)
+    write_rules(args.file, rules, managed_dimensions)
     sticky_count = sum(1 for rule in rules if rule.get("sticky"))
     monitor_count = sum(1 for rule in rules if rule.get("monitor"))
     print(f"{len(rules)} rule(s): {sticky_count} sticky, {monitor_count} monitor")
@@ -312,16 +351,34 @@ def command_list_sticky(args):
 def command_list_monitors(args):
     """Print ``pipe-separated app ids<TAB>monitor number`` for monitor rules.
 
+    Before the monitor dimension has a management marker, legacy defaults are
+    overlaid and existing assignments win. Once marked, an empty list remains
+    authoritative so an explicit user clear is preserved.
+
     Args:
         args: Parsed command-line arguments.
 
     Returns:
         int: 0 on success.
     """
-    for rule in read_rules(args.file):
-        monitor = rule.get("monitor")
-        if monitor:
-            print(f"{'|'.join(rule['appIds'])}\t{monitor}")
+    rules = read_rules(args.file)
+    assignments = []
+    if "monitors" not in read_managed_dimensions(args.file):
+        assignments.extend(parse_assignments(args.legacy_defaults))
+    assignments.extend(
+        (rule["appIds"], rule["monitor"])
+        for rule in rules if rule.get("monitor")
+    )
+    by_group = {}
+    order = []
+    for app_ids, monitor in assignments:
+        key = group_key(app_ids)
+        if key not in by_group:
+            order.append(key)
+        by_group[key] = (app_ids, monitor)
+    for key in order:
+        app_ids, monitor = by_group[key]
+        print(f"{'|'.join(app_ids)}\t{monitor}")
     return 0
 
 
@@ -351,6 +408,11 @@ def main(argv=None):
     lister.set_defaults(handler=command_list_sticky)
 
     monitors = subparsers.add_parser("list-monitors", help="print group/monitor pairs")
+    monitors.add_argument(
+        "--legacy-defaults",
+        default="",
+        help="group=monitor defaults used until monitor choices are first managed",
+    )
     monitors.set_defaults(handler=command_list_monitors)
 
     args = parser.parse_args(argv)
