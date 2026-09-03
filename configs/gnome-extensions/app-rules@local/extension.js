@@ -28,16 +28,16 @@
 //   - getAppId: Resolve a window's desktop-file app id.
 //   - workspaceIndexForRule: Convert visible workspace numbers to Meta indexes.
 //   - resolveRuleMonitor: Map a rule's monitor number/geometry to a Meta index.
-//   - isWindowMoveSafe: Mapped + valid-monitor gate before Mutter move APIs.
+//   - monitorMovePolicy: Lifecycle-safe gate before Mutter move APIs.
 //   - applyMonitor: Move a window onto its assigned monitor (retried).
 //   - applyRule: Move a window to a workspace/monitor and/or make it sticky.
 //   - matchAndApply: Find and apply the first rule matching a window.
 //   - AppRulesExtension: Extension entry point wiring up window tracking.
 
 import GLib from 'gi://GLib';
-import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import { isWindowMoveSafe } from './monitorMovePolicy.js';
 import { workspaceIndexForRule } from './workspacePolicy.js';
 
 // Retry delays (ms) after window-created for monitor moves. Mirrors
@@ -173,41 +173,12 @@ function resolveRuleMonitor(rule) {
 }
 
 /**
- * Whether it is safe to call move_to_monitor on this window.
- *
- * Requires a compositor actor (mapped) and a non-negative get_monitor().
- * Calling Mutter's move APIs on an unmapped or monitor-less window can
- * SIGSEGV the whole Shell, which JS cannot catch — so this gate is mandatory.
- *
- * @param {Meta.Window|null} win - Window under consideration.
- * @returns {boolean} true only when Mutter move APIs may be called.
- */
-function isWindowMoveSafe(win) {
-  if (!win || typeof win.move_to_monitor !== 'function') {
-    return false;
-  }
-  try {
-    if (typeof win.get_compositor_private === 'function' &&
-        !win.get_compositor_private()) {
-      return false;
-    }
-    if (typeof win.get_monitor !== 'function') {
-      return false;
-    }
-    const index = Number(win.get_monitor());
-    return Number.isFinite(index) && index >= 0;
-  } catch (e) {
-    return false;
-  }
-}
-
-/**
  * Move a window onto the monitor its rule assigns, retrying while Mutter
  * settles.
  *
- * A maximized or fullscreen window is unmaximized around the move and restored
- * afterwards, because Mutter keeps a maximized window's size tied to its
- * current monitor.
+ * Mutter preserves the window's placement state across move_to_monitor(). The
+ * extension deliberately does not unmaximize first: that state change is
+ * asynchronous and moving in the same tick can crash the compositor.
  *
  * @param {Meta.Window} win - The window to place.
  * @param {object} rule - The matched rule (must carry monitor information).
@@ -225,19 +196,18 @@ function applyMonitor(win, rule, timeouts) {
     if (!isWindowMoveSafe(win)) {
       return false;
     }
-    if (win.get_monitor() === target) {
+    const source = win.get_monitor();
+    if (source === target) {
       return true;
     }
-    let restore = null;
     try {
-      if (typeof win.get_maximized === 'function' && win.get_maximized()) {
-        restore = win.get_maximized();
-        win.unmaximize(Meta.MaximizeFlags.BOTH);
-      }
+      const sequence = typeof win.get_stable_sequence === 'function'
+        ? win.get_stable_sequence()
+        : 'unknown';
+      console.log(
+        `[app-rules] moving window ${sequence} from monitor ${source} to ${target}`,
+      );
       win.move_to_monitor(target);
-      if (restore) {
-        win.maximize(restore);
-      }
       console.log(`[app-rules] moved window to monitor index ${target}`);
       return true;
     } catch (e) {

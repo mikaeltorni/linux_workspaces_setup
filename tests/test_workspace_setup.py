@@ -597,6 +597,58 @@ console.log([1, 3, 8, 0, 'bad'].map(workspaceIndexForRule).join(','));
     assert "workspace: 7" not in rules_block
 
 
+def test_app_rules_monitor_moves_require_a_live_mapped_window():
+    """Monitor rules must fail closed before calling Mutter's native move API."""
+    extension = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
+        encoding="utf-8"
+    )
+    policy = ROOT_DIR / "configs/gnome-extensions/app-rules@local/monitorMovePolicy.js"
+    script = f"""
+import {{ isWindowMoveSafe }} from {policy.as_uri()!r};
+
+function actor(mapped = true, destroyed = false) {{
+  return {{
+    is_destroyed: () => destroyed,
+    is_mapped: () => mapped,
+  }};
+}}
+
+function window(overrides = {{}}) {{
+  return {{
+    is_alive: true,
+    move_to_monitor: () => {{}},
+    get_compositor_private: () => actor(),
+    get_monitor: () => 0,
+    ...overrides,
+  }};
+}}
+
+const cases = [
+  null,
+  window({{is_alive: false}}),
+  window({{get_compositor_private: () => null}}),
+  window({{get_compositor_private: () => actor(true, true)}}),
+  window({{get_compositor_private: () => actor(false, false)}}),
+  window({{get_monitor: () => -1}}),
+  window(),
+];
+console.log(cases.map(isWindowMoveSafe).join(','));
+"""
+
+    proc = subprocess.run(
+        ["node", "--input-type=module", "-e", script],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == "false,false,false,false,false,false,true"
+    assert "import { isWindowMoveSafe } from './monitorMovePolicy.js';" in extension
+    assert ".unmaximize(" not in extension
+    assert ".maximize(" not in extension
+
+
 if __name__ == "__main__":
     tests = [t for name, t in sorted(globals().items()) if name.startswith("test_") and callable(t)]
     failed = 0
