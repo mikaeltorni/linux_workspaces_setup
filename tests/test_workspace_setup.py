@@ -551,7 +551,7 @@ def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_three():
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
         encoding="utf-8"
     )
-    assert "{ appIds: ['smartgit.desktop'], workspace: 3, monitor: 3 }" in source
+    assert "{ appIds: ['smartgit.desktop'], workspace: 3, monitor: 3, wmClasses: ['smartgit'] }" in source
 
 
 def test_builtin_monkeytype_rule_pins_workspace_eight():
@@ -559,7 +559,7 @@ def test_builtin_monkeytype_rule_pins_workspace_eight():
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
         encoding="utf-8"
     )
-    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], workspace: 8 }" in source
+    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], workspace: 8, monitor: 'primary' }" in source
 
 
 def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():
