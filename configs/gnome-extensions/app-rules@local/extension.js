@@ -29,7 +29,7 @@
 //   - workspaceIndexForRule: Convert visible workspace numbers to Meta indexes.
 //   - resolveRuleMonitor: Map a rule's monitor number/geometry to a Meta index.
 //   - monitorMovePolicy: Lifecycle-safe gate before Mutter move APIs.
-//   - applyMonitor: Move a window onto its assigned monitor (retried).
+//   - applyMonitor: Move a mapped window onto its assigned monitor.
 //   - applyRule: Move a window to a workspace/monitor and/or make it sticky.
 //   - matchAndApply: Find and apply the first rule matching a window.
 //   - AppRulesExtension: Extension entry point wiring up window tracking.
@@ -40,10 +40,8 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import { isWindowMoveSafe } from './monitorMovePolicy.js';
 import { workspaceIndexForRule } from './workspacePolicy.js';
 
-// Retry delays (ms) after window-created for monitor moves. Mirrors
-// active-monitor-placement: early passes often see an unassigned monitor, and
-// slow clients (Electron apps like Discord) settle only after ~1s.
-const MONITOR_RETRY_DELAYS_MS = [0, 150, 400, 900, 1600];
+const RECHECK_INTERVAL_MS = 100;
+const MAX_RECHECKS = 50;
 
 // Built-in workspace pins. Always active.
 const RULES = [
@@ -166,77 +164,31 @@ function resolveRuleMonitor(rule) {
   }
 
   const number = Number(rule.monitor);
-  if (Number.isFinite(number) && number >= 1 && number <= count) {
-    return Math.trunc(number) - 1;
+  if (Number.isInteger(number) && number >= 1 && number <= count) {
+    return number - 1;
   }
   return -1;
 }
 
-/**
- * Move a window onto the monitor its rule assigns, retrying while Mutter
- * settles.
- *
- * Mutter preserves the window's placement state across move_to_monitor(). The
- * extension deliberately does not unmaximize first: that state change is
- * asynchronous and moving in the same tick can crash the compositor.
- *
- * @param {Meta.Window} win - The window to place.
- * @param {object} rule - The matched rule (must carry monitor information).
- * @param {Array<number>} timeouts - Extension-owned list that receives the
- *   scheduled GLib source ids so disable() can cancel them.
- * @returns {void}
- */
-function applyMonitor(win, rule, timeouts) {
-  const attempt = () => {
-    const target = resolveRuleMonitor(rule);
-    if (target < 0) {
-      console.log(`[app-rules] no monitor matches rule ${JSON.stringify(rule.monitor)}; leaving window alone`);
-      return true;
-    }
-    if (!isWindowMoveSafe(win)) {
-      return false;
-    }
-    const source = win.get_monitor();
-    if (source === target) {
-      return true;
-    }
-    try {
-      const sequence = typeof win.get_stable_sequence === 'function'
-        ? win.get_stable_sequence()
-        : 'unknown';
-      console.log(
-        `[app-rules] moving window ${sequence} from monitor ${source} to ${target}`,
-      );
-      win.move_to_monitor(target);
-      console.log(`[app-rules] moved window to monitor index ${target}`);
-      return true;
-    } catch (e) {
-      console.log(`[app-rules] move_to_monitor(${target}) failed: ${e}`);
-      return true;
-    }
-  };
-
-  if (attempt()) {
+/** Move a mapped window to the resolved monitor without changing maximization. */
+function applyMonitor(win, rule) {
+  const target = resolveRuleMonitor(rule);
+  if (target < 0) {
+    console.log('[app-rules] no monitor matches rule; leaving window alone');
     return;
   }
-  for (const delayMs of MONITOR_RETRY_DELAYS_MS) {
-    if (delayMs === 0) {
-      continue;
-    }
-    const sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delayMs, () => {
-      const index = timeouts.indexOf(sourceId);
-      if (index >= 0) {
-        timeouts.splice(index, 1);
-      }
-      try {
-        attempt();
-      } catch (e) {
-        console.log(`[app-rules] monitor retry failed: ${e}`);
-      }
-      return GLib.SOURCE_REMOVE;
-    });
-    timeouts.push(sourceId);
+  if (!isWindowReady(win) || win.get_monitor() === target) return;
+  try {
+    win.move_to_monitor(target);
+    console.log(`[app-rules] moved ${getAppId(win) || 'window'} to monitor index ${target}`);
+  } catch (error) {
+    console.log(`[app-rules] monitor move failed: ${error}`);
   }
+}
+
+/** Check mapped actor and source bounds immediately before native window moves. */
+function isWindowReady(win) {
+  return isWindowMoveSafe(win) && win.get_monitor() < global.display.get_n_monitors();
 }
 
 /**
@@ -247,12 +199,10 @@ function applyMonitor(win, rule, timeouts) {
  * @param {{workspace?: number, sticky?: boolean, monitor?: number}} rule - The
  *   rule to apply. `workspace` is the visible one-based number; `sticky` pins
  *   to all workspaces; `monitor` is the installer's 1-based display number.
- * @param {Array<number>} timeouts - Extension-owned list receiving GLib source
- *   ids for the deferred monitor placement retries.
  * @returns {void}
  */
-function applyRule(win, rule, timeouts) {
-  if (!win || win.skip_taskbar) {
+function applyRule(win, rule) {
+  if (!win || win.skip_taskbar || !isWindowReady(win)) {
     return;
   }
 
@@ -280,7 +230,7 @@ function applyRule(win, rule, timeouts) {
   }
 
   if (rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
-    applyMonitor(win, rule, timeouts || []);
+    applyMonitor(win, rule);
   }
 }
 
@@ -290,41 +240,71 @@ function applyRule(win, rule, timeouts) {
  * @param {Meta.Window} win - The window to match.
  * @param {Array<object>} rules - Active rules; user rules precede built-ins
  *   so an installer-managed rule wins for the same app.
- * @param {Array<number>} timeouts - Extension-owned list receiving GLib source
- *   ids for the deferred monitor placement retries.
- * @returns {void}
+ * @returns {boolean} False while the application identity is unavailable.
  */
-function matchAndApply(win, rules, timeouts) {
+function matchAndApply(win, rules) {
   const appId = (getAppId(win) || '').toLowerCase();
   if (!appId) {
-    return;
+    return false;
   }
 
   for (const rule of rules) {
     if (rule.appIds.some((id) => appId === id.toLowerCase())) {
-      applyRule(win, rule, timeouts);
+      applyRule(win, rule);
       break;
     }
   }
+  return true;
 }
 
 export default class AppRulesExtension extends Extension {
   enable() {
-    this._timeouts = [];
     const userRules = loadUserRules();
-    // Spotify and Discord are installation defaults: keep them sticky even
-    // when the master installer has created an empty user-rules file.
     this._rules = userRules === null
       ? [...RULES, ...STICKY_FALLBACK_RULES]
       : [...userRules, ...RULES, ...STICKY_FALLBACK_RULES];
+    this._pending = new Map();
 
     this._sig = global.display.connect('window-created', (_disp, win) => {
-      matchAndApply(win, this._rules, this._timeouts);
+      this._schedule(win);
     });
 
     global.get_window_actors()
       .map((a) => a.meta_window)
-      .forEach((w) => matchAndApply(w, this._rules, this._timeouts));
+      .forEach((w) => this._schedule(w));
+    console.log('[app-rules] enabled; waiting for mapped windows before applying rules');
+  }
+
+  /** Defer new/existing windows until mapped, with a bounded identity retry. */
+  _schedule(win) {
+    if (!win || win.skip_taskbar || this._pending.has(win)) return;
+    const pending = {sourceId: 0, unmanagedId: 0, attempts: 0};
+    this._pending.set(win, pending);
+    pending.unmanagedId = win.connect('unmanaged', () => this._cancel(win));
+    pending.sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, RECHECK_INTERVAL_MS, () => {
+      pending.attempts++;
+      let done = false;
+      try {
+        done = win.skip_taskbar || (isWindowReady(win) && matchAndApply(win, this._rules));
+      } catch (error) {
+        console.log(`[app-rules] deferred rule application failed: ${error}`);
+        done = true;
+      }
+      if (!done && pending.attempts < MAX_RECHECKS) return GLib.SOURCE_CONTINUE;
+      if (!done) console.log('[app-rules] stopped waiting for window mapping or application identity');
+      pending.sourceId = 0; // This callback removes its own source on return.
+      this._cancel(win);
+      return GLib.SOURCE_REMOVE;
+    });
+  }
+
+  /** Cancel work before a window is unmanaged or the extension is disabled. */
+  _cancel(win) {
+    const pending = this._pending.get(win);
+    if (!pending) return;
+    if (pending.sourceId) GLib.source_remove(pending.sourceId);
+    if (pending.unmanagedId) win.disconnect(pending.unmanagedId);
+    this._pending.delete(win);
   }
 
   disable() {
@@ -332,10 +312,8 @@ export default class AppRulesExtension extends Extension {
       global.display.disconnect(this._sig);
       this._sig = null;
     }
-    for (const sourceId of this._timeouts || []) {
-      GLib.source_remove(sourceId);
-    }
-    this._timeouts = [];
+    for (const win of this._pending.keys()) this._cancel(win);
     this._rules = null;
+    console.log('[app-rules] disabled; pending window rules cancelled');
   }
 }
