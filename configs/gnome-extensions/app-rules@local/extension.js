@@ -48,7 +48,7 @@ const RULES = [
   { appIds: ['cursor.desktop'], workspace: 1 },
   { appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 3, monitor: 2 },
   { appIds: ['smartgit.desktop'], workspace: 3, monitor: 3 },
-  { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], workspace: 8 },
+  { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], workspace: 8, monitor: 'primary' },
   { appIds: ['chatgpt.desktop'], workspace: 1 },
   { appIds: ['com.obsproject.Studio.desktop', 'obs.desktop'], workspace: 8 },
 ];
@@ -136,6 +136,10 @@ function resolveRuleMonitor(rule) {
     return -1;
   }
 
+  if (rule.monitor === 'primary') {
+    const primary = display.get_primary_monitor();
+    return Number.isInteger(primary) && primary >= 0 && primary < count ? primary : -1;
+  }
   const wanted = rule.monitorGeometry;
   if (wanted && Number.isFinite(wanted.x) && Number.isFinite(wanted.y)) {
     let positionMatch = -1;
@@ -206,6 +210,10 @@ function applyRule(win, rule) {
     return;
   }
 
+  if (rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
+    applyMonitor(win, rule);
+  }
+
   if (rule.workspace !== undefined) {
     const targetIndex = workspaceIndexForRule(rule.workspace);
     if (targetIndex < 0) {
@@ -229,9 +237,6 @@ function applyRule(win, rule) {
     }
   }
 
-  if (rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
-    applyMonitor(win, rule);
-  }
 }
 
 /**
@@ -244,17 +249,18 @@ function applyRule(win, rule) {
  */
 function matchAndApply(win, rules) {
   const appId = (getAppId(win) || '').toLowerCase();
-  if (!appId) {
-    return false;
-  }
+  const classes = [win.get_wm_class?.(), win.get_wm_class_instance?.()]
+    .filter(value => typeof value === 'string').map(value => value.toLowerCase());
+  if (!appId && classes.length === 0) return false;
 
   for (const rule of rules) {
-    if (rule.appIds.some((id) => appId === id.toLowerCase())) {
+    if (rule.appIds.some((id) => appId === id.toLowerCase()) ||
+        rule.wmClasses?.some(id => classes.includes(id.toLowerCase()))) {
       applyRule(win, rule);
-      break;
+      return true;
     }
   }
-  return true;
+  return Boolean(appId);
 }
 
 export default class AppRulesExtension extends Extension {

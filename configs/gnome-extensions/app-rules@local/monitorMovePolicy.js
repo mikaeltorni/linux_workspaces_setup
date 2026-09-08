@@ -29,9 +29,16 @@ export function isWindowMoveSafe(win) {
     const actor = win.get_compositor_private();
     // Clutter.Actor exposes mapped as a GObject property. Do not require
     // nonstandard liveness helpers; unmanaged signals cancel pending windows.
-    if (!actor || (typeof actor.is_destroyed === 'function' && actor.is_destroyed()) ||
-        !(typeof actor.is_mapped === 'function' ? actor.is_mapped() : actor.mapped)) {
-      return false;
+    if (!actor || (typeof actor.is_destroyed === 'function' && actor.is_destroyed())) return false;
+    const mapped = typeof actor.is_mapped === 'function' ? actor.is_mapped() : actor.mapped;
+    if (!mapped) {
+      // Off-workspace actors are intentionally unmapped. Require explicit
+      // hidden-workspace state and initialized geometry, never an early map.
+      if (typeof win.showing_on_its_workspace !== 'function' ||
+          win.showing_on_its_workspace() || typeof win.get_frame_rect !== 'function') return false;
+      const rect = win.get_frame_rect();
+      if (!rect || ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
+          rect.width <= 0 || rect.height <= 0) return false;
     }
 
     const index = win.get_monitor();
