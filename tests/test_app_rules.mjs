@@ -180,3 +180,23 @@ test('Monkeytype uses workspace 8 and the primary monitor even when hidden', () 
   assert.deepEqual(win.moves, [1]);
   h.extension.disable();
 });
+
+test('Cursor with late desktop identity honors its saved main-screen rule', () => {
+  const main = {x: 0, y: 2160, width: 3840, height: 2160};
+  const h = harness({monitorCount: 3, primary: 0, geometries: [main, {}, {}],
+    rules: [{appIds: ['cursor.desktop'], monitor: 2, monitorGeometry: main}]});
+  const win = windowMock({monitor: 2, mapped: true, appId: null});
+  win.get_wm_class = () => 'Cursor';
+  h.display.emit('window-created', win); h.tick();
+  assert.deepEqual(win.moves, [0]);
+  assert.equal(win.workspace, null);
+  h.extension.disable();
+});
+
+test('Cursor defaults to the primary monitor without a saved rule', () => {
+  const h = harness({rules: [], monitorCount: 3, primary: 2});
+  const win = windowMock({monitor: 0, mapped: true});
+  h.display.emit('window-created', win); h.tick();
+  assert.deepEqual(win.moves, [2]);
+  h.extension.disable();
+});

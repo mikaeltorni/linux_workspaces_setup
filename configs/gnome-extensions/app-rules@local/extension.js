@@ -45,7 +45,7 @@ const MAX_RECHECKS = 50;
 
 // Built-in workspace pins. Always active.
 const RULES = [
-  { appIds: ['cursor.desktop'], workspace: 1 },
+  { appIds: ['cursor.desktop'], wmClasses: ['cursor'], workspace: 1, monitor: 'primary' },
   { appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 3, monitor: 2 },
   { appIds: ['smartgit.desktop'], workspace: 3, monitor: 3 },
   { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], workspace: 8, monitor: 'primary' },
@@ -248,9 +248,15 @@ function applyRule(win, rule) {
  * @returns {boolean} False while the application identity is unavailable.
  */
 function matchAndApply(win, rules) {
-  const appId = (getAppId(win) || '').toLowerCase();
+  let appId = (getAppId(win) || '').toLowerCase();
   const classes = [win.get_wm_class?.(), win.get_wm_class_instance?.()]
     .filter(value => typeof value === 'string').map(value => value.toLowerCase());
+  // Infer the canonical id from a known class before searching user rules,
+  // so a late desktop-file association cannot bypass saved monitor choices.
+  if (!appId) {
+    const known = rules.find(rule => rule.wmClasses?.some(id => classes.includes(id.toLowerCase())));
+    appId = known?.appIds[0]?.toLowerCase() || '';
+  }
   if (!appId && classes.length === 0) return false;
 
   for (const rule of rules) {
