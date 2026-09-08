@@ -200,3 +200,15 @@ test('Cursor defaults to the primary monitor without a saved rule', () => {
   assert.deepEqual(win.moves, [2]);
   h.extension.disable();
 });
+
+test('SmartGit with late desktop identity moves from monitor 1 to monitor 3', () => {
+  const h = harness({rules: [], monitorCount: 3});
+  const win = windowMock({monitor: 0, mapped: true, appId: null});
+  win.get_wm_class = () => 'SmartGit';
+  // Moving workspaces can hide the actor: monitor placement must happen first.
+  win.change_workspace = function(target) { this.workspace = target; this.actor.mapped = false; };
+  h.display.emit('window-created', win); h.tick();
+  assert.deepEqual(win.moves, [2]);
+  assert.equal(win.workspace, 2);
+  h.extension.disable();
+});

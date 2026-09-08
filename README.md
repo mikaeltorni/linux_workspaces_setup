@@ -182,3 +182,7 @@ precede workspace moves, and closed windows cancel pending placement.
 Cursor defaults to the primary monitor. Its window class identifies startup
 windows before the desktop ID arrives, while saved user monitor rules retain
 precedence and do not gain an unwanted workspace assignment.
+
+SmartGit uses its startup window class when its desktop ID is delayed, and
+opens on monitor 3 at workspace 3. The monitor move happens before the workspace
+change can hide its actor.

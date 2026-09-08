@@ -47,7 +47,7 @@ const MAX_RECHECKS = 50;
 const RULES = [
   { appIds: ['cursor.desktop'], wmClasses: ['cursor'], workspace: 1, monitor: 'primary' },
   { appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 3, monitor: 2 },
-  { appIds: ['smartgit.desktop'], workspace: 3, monitor: 3 },
+  { appIds: ['smartgit.desktop'], workspace: 3, monitor: 3, wmClasses: ['smartgit'] },
   { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], workspace: 8, monitor: 'primary' },
   { appIds: ['chatgpt.desktop'], workspace: 1 },
   { appIds: ['com.obsproject.Studio.desktop', 'obs.desktop'], workspace: 8 },
