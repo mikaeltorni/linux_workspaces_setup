@@ -173,3 +173,8 @@ and cancels pending work when a window closes or the extension is disabled.
 Run the desktop-free regression suite with `node --test tests/test_app_rules.mjs`.
 After deployment, new code takes effect at the next manual session activation;
 the installer does not restart GNOME Shell.
+
+Monkeytype opens on workspace 8 on the primary monitor, including its Chrome
+PWA instance. Initialized windows hidden on other workspaces may be placed;
+unmapped windows on the current workspace still wait for mapping. Monitor moves
+precede workspace moves, and closed windows cancel pending placement.

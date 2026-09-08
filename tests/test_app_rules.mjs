@@ -20,9 +20,10 @@ class Signals {
   }
 }
 
-function harness({existing = [], rules = [{appIds: ['cursor.desktop'], monitor: 2}], monitorCount = 2, geometries = []} = {}) {
+function harness({existing = [], rules = [{appIds: ['cursor.desktop'], monitor: 2}], monitorCount = 2, geometries = [], primary = 0} = {}) {
   const display = new Signals();
   display.get_n_monitors = () => monitorCount;
+  display.get_primary_monitor = () => primary;
   display.get_monitor_geometry = index => geometries[index];
   const timers = new Map();
   let next = 1;
@@ -165,4 +166,17 @@ test('Spotify and Discord follow the upper screen while Cursor follows the lower
     }
     h.extension.disable();
   }
+});
+
+test('Monkeytype uses workspace 8 and the primary monitor even when hidden', () => {
+  const h = harness({rules: [], monitorCount: 3, primary: 1});
+  const win = windowMock({monitor: 2, mapped: false, appId: 'google-chrome.desktop'});
+  win.get_wm_class_instance = () => 'crx_picebhhlijnlefeleilfbanaghjlkkna';
+  win.showing_on_its_workspace = () => false;
+  win.get_frame_rect = () => ({x: 4000, y: 1200, width: 1200, height: 900});
+  win.move_to_monitor = function(target) { this.moves.push(target); this.monitor = target; };
+  h.display.emit('window-created', win); h.tick();
+  assert.equal(win.workspace, 7);
+  assert.deepEqual(win.moves, [1]);
+  h.extension.disable();
 });
