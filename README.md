@@ -178,3 +178,7 @@ Monkeytype opens on workspace 8 on the primary monitor, including its Chrome
 PWA instance. Initialized windows hidden on other workspaces may be placed;
 unmapped windows on the current workspace still wait for mapping. Monitor moves
 precede workspace moves, and closed windows cancel pending placement.
+
+Cursor defaults to the primary monitor. Its window class identifies startup
+windows before the desktop ID arrives, while saved user monitor rules retain
+precedence and do not gain an unwanted workspace assignment.
