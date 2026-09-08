@@ -18,7 +18,7 @@ export function isWindowMoveSafe(win) {
   }
 
   try {
-    if (win.is_alive !== true) {
+    if (win.is_alive === false) {
       return false;
     }
     if (typeof win.get_compositor_private !== 'function' ||
@@ -27,14 +27,15 @@ export function isWindowMoveSafe(win) {
     }
 
     const actor = win.get_compositor_private();
-    if (!actor || typeof actor.is_destroyed !== 'function' ||
-        typeof actor.is_mapped !== 'function' || actor.is_destroyed() ||
-        !actor.is_mapped()) {
+    // Clutter.Actor exposes mapped as a GObject property. Do not require
+    // nonstandard liveness helpers; unmanaged signals cancel pending windows.
+    if (!actor || (typeof actor.is_destroyed === 'function' && actor.is_destroyed()) ||
+        !(typeof actor.is_mapped === 'function' ? actor.is_mapped() : actor.mapped)) {
       return false;
     }
 
-    const index = Number(win.get_monitor());
-    return Number.isFinite(index) && index >= 0;
+    const index = win.get_monitor();
+    return Number.isInteger(index) && index >= 0;
   } catch (e) {
     return false;
   }

@@ -27,7 +27,7 @@ See the full cross-repository map in
 
 - Owned solely by `linux_hotkey_setup`: screenshot and numbered workspace switch/move shortcuts plus the pointer-driven window-placement tiler. This repository never installs a second input grabber.
 - Kept in `linux_hotkey_setup`: screenshot and numbered workspace switch/move shortcuts.
-- From `linux_configuration_setup`: app-rules GNOME Shell extension that assigns apps to workspaces, sticky windows, or a fixed display monitor. The master installer's `[p]` menu action writes additional rules to `~/.config/app-rules/user-rules.json` (queried back with `install.sh --list-selected-sticky-apps`); Spotify and Discord remain installation-default sticky rules even when that file exists.
+- Sole owner of the app-rules GNOME Shell extension that assigns apps to workspaces, sticky windows, or a fixed display monitor. The master installer's `[p]` menu action writes additional rules to `~/.config/app-rules/user-rules.json` (queried back with `install.sh --list-selected-sticky-apps`); Spotify and Discord remain installation-default sticky rules even when that file exists.
 - The master installer's `[m]` menu action writes per-application monitor rules into the same file (queried back with `install.sh --list-selected-app-monitors`), so an application opens on the chosen display on every reboot. Both dimensions are merged by `scripts/app_rules_rules.py`: a run that manages only one of them preserves the other's rules instead of overwriting the file.
 - From `ubuntu_2404_taskbar_system_status_monitor`: Window Rules/Workspace rules behavior and Auto-move-windows workspace placement configuration. The Ubuntu taskbar repository keeps the resource monitor/taskbar UI pieces only.
 - Kept separate but invoked by this repo: automatic same-application window tiling in `linux_automatic_window_tiling`.
@@ -165,3 +165,11 @@ You are solely responsible for determining whether this software is suitable, sa
 The authors and copyright holders make no guarantees regarding security, reliability, availability, correctness, compliance, non-infringement, or fitness for any particular purpose.
 
 This notice is intended to clarify the nature of the project and does not impose additional restrictions beyond the MIT License.
+
+App rules are owned solely by this repository. Monitor numbers are 1-based;
+saved screen geometry takes precedence over numeric indexes after renumbering.
+Window creation waits for mapping and app identity for up to five seconds,
+and cancels pending work when a window closes or the extension is disabled.
+Run the desktop-free regression suite with `node --test tests/test_app_rules.mjs`.
+After deployment, new code takes effect at the next manual session activation;
+the installer does not restart GNOME Shell.
