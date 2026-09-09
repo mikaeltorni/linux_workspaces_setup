@@ -186,3 +186,7 @@ precedence and do not gain an unwanted workspace assignment.
 SmartGit uses its startup window class when its desktop ID is delayed, and
 opens on monitor 3 at workspace 3. The monitor move happens before the workspace
 change can hide its actor.
+
+Programmatic app-rule placement preserves an existing all-workspaces preference,
+even for monitor-only rules and when a workspace move fails. Explicit sticky
+rules are reapplied after placement; failures are reported in the Shell journal.

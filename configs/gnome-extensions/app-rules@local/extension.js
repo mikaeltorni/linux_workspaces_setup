@@ -210,30 +210,36 @@ function applyRule(win, rule) {
     return;
   }
 
-  if (rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
-    applyMonitor(win, rule);
-  }
-
-  if (rule.workspace !== undefined) {
-    const targetIndex = workspaceIndexForRule(rule.workspace);
-    if (targetIndex < 0) {
-      console.log(`[app-rules] invalid workspace number ${JSON.stringify(rule.workspace)}; ignoring workspace move`);
-    } else {
-      const wsMgr = global.workspace_manager;
-      if (wsMgr.n_workspaces > targetIndex) {
-        const ws = wsMgr.get_workspace_by_index(targetIndex);
-        if (ws) {
-          win.change_workspace(ws);
+  // Placement is independent of the user's all-workspaces preference.
+  // Mutter workspace changes can clear it, so restore it even after a failure.
+  const keepSticky = Boolean(rule.sticky || win.is_on_all_workspaces?.());
+  try {
+    if (rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
+      applyMonitor(win, rule);
+    }
+  
+    if (rule.workspace !== undefined) {
+      const targetIndex = workspaceIndexForRule(rule.workspace);
+      if (targetIndex < 0) {
+        console.log(`[app-rules] invalid workspace number ${JSON.stringify(rule.workspace)}; ignoring workspace move`);
+      } else {
+        const wsMgr = global.workspace_manager;
+        if (wsMgr.n_workspaces > targetIndex) {
+          const ws = wsMgr.get_workspace_by_index(targetIndex);
+          if (ws) {
+            win.change_workspace(ws);
+          }
         }
       }
     }
-  }
-
-  if (rule.sticky && typeof win.stick === 'function') {
-    try {
-      win.stick();
-    } catch (e) {
-      // ignore
+  } finally {
+    if (keepSticky && typeof win.stick === 'function') {
+      try {
+        win.stick();
+        console.log(`[app-rules] preserved all-workspaces for ${getAppId(win) || 'window'}`);
+      } catch (error) {
+        console.log(`[app-rules] failed to preserve all-workspaces: ${error}`);
+      }
     }
   }
 
