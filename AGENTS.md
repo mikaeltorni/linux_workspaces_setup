@@ -18,7 +18,8 @@ Do not move the remaining behaviors into `linux_hotkey_setup`,
 `linux_configuration_setup`, or `ubuntu_2404_taskbar_system_status_monitor`
 unless ownership moves again. When changing installed desktop behavior, test
 the affected repo and deploy this repo's installer when a GNOME session is
-available; log out/in for shell-extension changes.
+available; follow the `linux-configuration` skill for extension activation
+(X11 in-place reload, or manual logout/login on Wayland).
 
 
 ## Mandatory programming guidelines prompt
