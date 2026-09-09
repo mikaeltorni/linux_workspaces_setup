@@ -217,7 +217,7 @@ function applyRule(win, rule) {
     if (rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
       applyMonitor(win, rule);
     }
-  
+
     if (rule.workspace !== undefined) {
       const targetIndex = workspaceIndexForRule(rule.workspace);
       if (targetIndex < 0) {
