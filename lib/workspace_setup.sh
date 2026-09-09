@@ -142,12 +142,6 @@ join_as_gsettings_array() {
   printf '%s\n' "$out"
 }
 
-set_gsettings_strv() {
-  local schema="$1" key="$2"
-  shift 2
-  user_gsettings set "$schema" "$key" "$(join_as_gsettings_array "$@")"
-}
-
 set_extension_strv() {
   local key="$1"
   shift

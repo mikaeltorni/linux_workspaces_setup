@@ -376,6 +376,8 @@ def test_gsettings_list_mutation_uses_extracted_helper():
     setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
     assert "wss_bin" in setup
     assert "gsettings_strv.py" not in setup
+    assert "set_gsettings_strv()" not in setup
+    assert "set_extension_strv()" in setup
 
 
 def test_workspace_setup_logging_is_centralized_and_best_effort():
