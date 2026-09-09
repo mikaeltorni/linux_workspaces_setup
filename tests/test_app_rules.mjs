@@ -212,3 +212,22 @@ test('SmartGit with late desktop identity moves from monitor 1 to monitor 3', ()
   assert.equal(win.workspace, 2);
   h.extension.disable();
 });
+
+test('programmatic monitor and workspace moves preserve existing all-workspace state', () => {
+  const h = harness();
+  for (const throws of [false, true]) {
+    const win = windowMock({monitor: 0, mapped: true, appId: 'spotify.desktop'});
+    win.sticky = true;
+    win.is_on_all_workspaces = () => win.sticky;
+    win.move_to_monitor = function(target) { this.monitor = target; this.sticky = false; };
+    win.change_workspace = function(target) {
+      this.workspace = target; this.sticky = false;
+      if (throws) throw new Error('workspace move failed');
+    };
+    try { h.applyRule(win, {monitor: 2, workspace: 3}); } catch (error) {
+      assert.equal(error.message, 'workspace move failed');
+    }
+    assert.equal(win.sticky, true);
+  }
+  h.extension.disable();
+});
