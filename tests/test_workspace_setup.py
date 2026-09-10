@@ -372,6 +372,12 @@ def test_monitor_window_extension_extracted_but_send_mode_config_stays():
     assert "workspace_send_mode|" in manifest
 
 
+def test_install_sh_does_not_keep_features_filter():
+    installer = (ROOT_DIR / "install.sh").read_text(encoding="utf-8")
+    assert 'SELECTED_FEATURES="${FEATURES:-}"' not in installer
+    assert "component_main \"$@\"" in installer
+
+
 def test_gsettings_list_mutation_uses_extracted_helper():
     setup = (ROOT_DIR / "lib/workspace_setup.sh").read_text(encoding="utf-8")
     assert "wss_bin" in setup
