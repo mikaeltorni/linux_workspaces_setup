@@ -168,7 +168,7 @@ test('Spotify and Discord follow the upper screen while Cursor follows the lower
   }
 });
 
-test('Monkeytype uses workspace 8 and the primary monitor even when hidden', () => {
+test('Monkeytype uses workspace 7 and the primary monitor even when hidden', () => {
   const h = harness({rules: [], monitorCount: 3, primary: 1});
   const win = windowMock({monitor: 2, mapped: false, appId: 'google-chrome.desktop'});
   win.get_wm_class_instance = () => 'crx_picebhhlijnlefeleilfbanaghjlkkna';
@@ -176,7 +176,7 @@ test('Monkeytype uses workspace 8 and the primary monitor even when hidden', () 
   win.get_frame_rect = () => ({x: 4000, y: 1200, width: 1200, height: 900});
   win.move_to_monitor = function(target) { this.moves.push(target); this.monitor = target; };
   h.display.emit('window-created', win); h.tick();
-  assert.equal(win.workspace, 7);
+  assert.equal(win.workspace, 6);
   assert.deepEqual(win.moves, [1]);
   h.extension.disable();
 });
