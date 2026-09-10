@@ -109,49 +109,8 @@ source "$SCRIPT_DIR/installer/components.sh"
 
 main() {
   msg "=== Linux Workspaces Setup ==="
-  
-  # Feature-specific installation support (--features=feature1,feature2,...)
-  SELECTED_FEATURES="${FEATURES:-}"
-  
-  if [ -n "$SELECTED_FEATURES" ]; then
-    IFS="," read -ra FEATURE_ARRAY <<< "$SELECTED_FEATURES"
-    msg "Feature filter active: ${FEATURE_ARRAY[*]}"
-    
-    local select_arg=""
-    for arg in "$@"; do
-      if [[ "${arg}" == --select=* ]]; then  
-        local selected_components="${arg#--select=}"
-        local filtered="" first=true
-        
-        for comp_id in ${selected_components}; do
-          for feature in "${FEATURE_ARRAY[@]}"; do  
-            if [ "$comp_id" = "$feature" ]; then
-              if $first; then filtered="$comp_id"; first=false; else filtered="$filtered,$comp_id"; fi
-              break
-            fi  
-          done  
-        done
-        
-        select_arg="--select=$filtered"
-        break
-      fi
-    done
-    
-    # If no specific --select, use feature list directly as component IDs  
-    if [ -z "$select_arg" ]; then
-      local features_as_components="" first=true
-      for feature in "${FEATURE_ARRAY[@]}"; do
-        if $first; then features_as_components="$feature"; first=false; else features_as_components="$features_as_components,$feature"; fi
-      done  
-      select_arg="--select=$features_as_components"
-    fi
-    
-    component_main "$select_arg"
-  else
-    msg "Installing all configured components"
-    component_main "$@"  
-  fi
-  
+  msg "Installing all configured components"
+  component_main "$@"
   msg "Ubuntu workspace setup complete. Log out and back in before testing GNOME Shell extension changes."
 }
 
