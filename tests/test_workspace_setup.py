@@ -562,12 +562,12 @@ def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_three():
     assert "{ appIds: ['smartgit.desktop'], workspace: 3, monitor: 3, wmClasses: ['smartgit'] }" in source
 
 
-def test_builtin_monkeytype_rule_pins_workspace_eight():
-    """Monkeytype and its Chrome PWA alias open on visible workspace 8."""
+def test_builtin_monkeytype_rule_pins_workspace_seven():
+    """Monkeytype and its Chrome PWA alias open on visible workspace 7."""
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
         encoding="utf-8"
     )
-    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], workspace: 8, monitor: 'primary' }" in source
+    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], workspace: 7, monitor: 'primary' }" in source
 
 
 def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():
@@ -586,7 +586,7 @@ def test_app_rules_workspace_numbers_match_gnome_ui():
     policy = ROOT_DIR / "configs/gnome-extensions/app-rules@local/workspacePolicy.js"
     script = f"""
 import {{ workspaceIndexForRule }} from {policy.as_uri()!r};
-console.log([1, 3, 8, 0, 'bad'].map(workspaceIndexForRule).join(','));
+console.log([1, 3, 7, 8, 0, 'bad'].map(workspaceIndexForRule).join(','));
 """
 
     proc = subprocess.run(
@@ -597,12 +597,13 @@ console.log([1, 3, 8, 0, 'bad'].map(workspaceIndexForRule).join(','));
     )
 
     assert proc.returncode == 0, proc.stderr
-    assert proc.stdout.strip() == "0,2,7,-1,-1"
+    assert proc.stdout.strip() == "0,2,6,7,-1,-1"
     assert "workspaceIndexForRule(rule.workspace)" in extension
     rules_block = extension.split("const RULES = [", 1)[1].split("];", 1)[0]
     assert "workspace: 0" not in rules_block
     assert "workspace: 2" not in rules_block
-    assert "workspace: 7" not in rules_block
+    # Visible workspace 7 is a valid 1-based pin (Monkeytype); Meta index 6.
+    assert "workspace: 7" in rules_block
 
 
 def test_app_rules_monitor_moves_require_a_live_mapped_window():
