@@ -549,6 +549,8 @@ def test_app_rules_extension_loads_user_rules_dynamically():
     assert "user-rules.json" in source
     assert "STICKY_FALLBACK_RULES" in source
     assert "...userRules, ...RULES, ...STICKY_FALLBACK_RULES" in source
+    assert "{ appIds: ['discord.desktop', 'discord_discord.desktop'], wmClasses: ['discord'], sticky: true }" in source
+    assert "{ appIds: ['spotify.desktop', 'spotify_spotify.desktop'], wmClasses: ['spotify'], sticky: true }" in source
     # The always-on builtin list must no longer hardcode sticky apps.
     rules_block = source.split("const RULES = [", 1)[1].split("];", 1)[0]
     assert "sticky" not in rules_block
