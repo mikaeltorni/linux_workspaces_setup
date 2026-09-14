@@ -48,7 +48,7 @@ const RULES = [
   { appIds: ['cursor.desktop'], wmClasses: ['cursor'], workspace: 1, monitor: 'primary' },
   { appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 3, monitor: 2 },
   { appIds: ['smartgit.desktop'], workspace: 3, monitor: 3, wmClasses: ['smartgit'] },
-  { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], workspace: 7, monitor: 'primary' },
+  { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], titles: ['monkeytype'], workspace: 7, monitor: 'primary' },
   { appIds: ['chatgpt.desktop'], workspace: 1 },
   { appIds: ['com.obsproject.Studio.desktop', 'obs.desktop'], workspace: 8 },
 ];
@@ -198,26 +198,32 @@ function isWindowReady(win) {
 /**
  * Apply a single rule to a window: move it to a workspace and/or stick it.
  *
- * @param {Meta.Window} win - The window to act on. No-op for null or
- *   skip-taskbar (utility/override) windows.
- * @param {{workspace?: number, sticky?: boolean, monitor?: number}} rule - The
+ * @param {Meta.Window} win - The window to act on.
+ * @param {{workspace?: number, sticky?: boolean, monitor?: number, titles?: string[]}} rule - The
  *   rule to apply. `workspace` is the visible one-based number; `sticky` pins
  *   to all workspaces; `monitor` is the installer's 1-based display number.
- * @returns {void}
+ * @returns {boolean} False when the window still needs another attempt.
  */
 function applyRule(win, rule) {
   // Chrome PWAs and Electron/snap apps often report skip_taskbar while still
   // being the real user-visible window (role=pop-up / browser-window).
-  if (!win || !isWindowReady(win)) {
+  if (!win) {
+    return false;
+  }
+  const ready = isWindowReady(win);
+  const keepSticky = Boolean(rule.sticky || win.is_on_all_workspaces?.());
+  const wantsWorkspace = rule.workspace !== undefined;
+  // Monitor moves need a mapped actor. Workspace/sticky pins still apply to
+  // off-workspace PWA windows whose compositor actor is not move-safe yet.
+  if (!ready && !wantsWorkspace && !keepSticky) {
     return false;
   }
 
   // Placement is independent of the user's all-workspaces preference.
   // Mutter workspace changes can clear it, so restore it even after a failure.
-  const keepSticky = Boolean(rule.sticky || win.is_on_all_workspaces?.());
-  let workspaceReady = rule.workspace === undefined;
+  let workspaceReady = !wantsWorkspace;
   try {
-    if (rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
+    if (ready && rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
       applyMonitor(win, rule);
     }
 
@@ -254,8 +260,30 @@ function applyRule(win, rule) {
   return workspaceReady;
 }
 
+/** Collect lowercased wm class / instance strings from a Meta.Window. */
+function windowClasses(win) {
+  return [win.get_wm_class?.(), win.get_wm_class_instance?.(), win.wm_class, win.wm_class_instance]
+    .filter(value => typeof value === 'string').map(value => value.toLowerCase());
+}
+
+function windowTitle(win) {
+  const title = win.get_title?.() || win.title || '';
+  return typeof title === 'string' ? title.toLowerCase() : '';
+}
+
+function ruleMatches(rule, appId, classes, title) {
+  if (rule.appIds?.some(id => appId === id.toLowerCase())) return true;
+  if (rule.wmClasses?.some(id => classes.includes(id.toLowerCase()))) return true;
+  if (title && rule.titles?.some(part => title.includes(part.toLowerCase()))) {
+    const chromeHost = appId.includes('chrome') || classes.includes('google-chrome')
+      || classes.some(value => value.startsWith('crx_'));
+    if (chromeHost) return true;
+  }
+  return false;
+}
+
 /**
- * Find the first rule whose app ids match the window and apply it.
+ * Find the first rule whose app ids, wm class, or title match the window.
  *
  * @param {Meta.Window} win - The window to match.
  * @param {Array<object>} rules - Active rules; user rules precede built-ins
@@ -264,19 +292,18 @@ function applyRule(win, rule) {
  */
 function matchAndApply(win, rules) {
   let appId = (getAppId(win) || '').toLowerCase();
-  const classes = [win.get_wm_class?.(), win.get_wm_class_instance?.()]
-    .filter(value => typeof value === 'string').map(value => value.toLowerCase());
+  const classes = windowClasses(win);
+  const title = windowTitle(win);
   // Infer the canonical id from a known class before searching user rules,
   // so a late desktop-file association cannot bypass saved monitor choices.
   if (!appId) {
     const known = rules.find(rule => rule.wmClasses?.some(id => classes.includes(id.toLowerCase())));
     appId = known?.appIds[0]?.toLowerCase() || '';
   }
-  if (!appId && classes.length === 0) return false;
+  if (!appId && classes.length === 0 && !title) return false;
 
   for (const rule of rules) {
-    if (rule.appIds?.some((id) => appId === id.toLowerCase()) ||
-        rule.wmClasses?.some(id => classes.includes(id.toLowerCase()))) {
+    if (ruleMatches(rule, appId, classes, title)) {
       return applyRule(win, rule);
     }
   }
@@ -288,6 +315,35 @@ function matchAndApply(win, rules) {
     return false;
   }
   return Boolean(appId);
+}
+
+/** Existing windows, including unmapped ones on other workspaces. */
+function listKnownWindows() {
+  const seen = new Set();
+  const out = [];
+  const add = (win) => {
+    if (!win || seen.has(win)) return;
+    seen.add(win);
+    out.push(win);
+  };
+  try {
+    const wm = global.workspace_manager;
+    const count = wm?.n_workspaces ?? wm?.get_n_workspaces?.() ?? 0;
+    for (let i = 0; i < count; i++) {
+      const ws = wm.get_workspace_by_index(i);
+      if (ws && typeof ws.list_windows === 'function') {
+        for (const win of ws.list_windows()) add(win);
+      }
+    }
+  } catch (error) {
+    console.log(`[app-rules] workspace window listing failed: ${error}`);
+  }
+  try {
+    global.get_window_actors().forEach(actor => add(actor.meta_window));
+  } catch (error) {
+    console.log(`[app-rules] actor window listing failed: ${error}`);
+  }
+  return out;
 }
 
 export default class AppRulesExtension extends Extension {
@@ -302,9 +358,7 @@ export default class AppRulesExtension extends Extension {
       this._schedule(win);
     });
 
-    global.get_window_actors()
-      .map((a) => a.meta_window)
-      .forEach((w) => this._schedule(w));
+    listKnownWindows().forEach(win => this._schedule(win));
     console.log('[app-rules] enabled; waiting for mapped windows before applying rules');
   }
 
@@ -317,7 +371,7 @@ export default class AppRulesExtension extends Extension {
     const tryApply = () => {
       pending.attempts++;
       try {
-        return isWindowReady(win) && matchAndApply(win, this._rules);
+        return matchAndApply(win, this._rules);
       } catch (error) {
         console.log(`[app-rules] deferred rule application failed: ${error}`);
         return true;
