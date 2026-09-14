@@ -569,7 +569,7 @@ def test_builtin_monkeytype_rule_pins_workspace_seven():
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
         encoding="utf-8"
     )
-    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], workspace: 7, monitor: 'primary' }" in source
+    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], titles: ['monkeytype'], workspace: 7, monitor: 'primary' }" in source
 
 
 def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():

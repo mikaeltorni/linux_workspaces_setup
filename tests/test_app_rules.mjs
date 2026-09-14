@@ -272,6 +272,37 @@ test('Spotify and Discord become sticky from wm class when WindowTracker has no 
   h.extension.disable();
 });
 
+test('title match does not pin unrelated windows that mention Monkeytype', () => {
+  const h = harness({rules: [], monitorCount: 3, primary: 1});
+  const win = windowMock({monitor: 0, mapped: true, appId: 'kitty.desktop'});
+  win.get_wm_class = () => 'kitty-acc-agent-grok';
+  win.get_title = () => 'linux_workspaces_setup_feat-monkeytype-ws7';
+  h.display.emit('window-created', win); h.tick();
+  assert.equal(win.workspace, null);
+  h.extension.disable();
+});
+
+test('Monkeytype matches a Chrome window by title when the crx instance is missing', () => {
+  const h = harness({rules: [], monitorCount: 3, primary: 1});
+  const win = windowMock({monitor: 2, mapped: true, appId: 'google-chrome.desktop'});
+  win.get_wm_class = () => 'Google-chrome';
+  win.get_title = () => 'Monkeytype | A minimalistic, customizable typing test';
+  h.display.emit('window-created', win); h.tick();
+  assert.equal(win.workspace, 6);
+  assert.deepEqual(win.moves, [1]);
+  h.extension.disable();
+});
+
+test('Monkeytype workspace pin applies when monitor move is not yet safe', () => {
+  const h = harness({rules: [], monitorCount: 3, primary: 1});
+  const win = windowMock({monitor: -1, mapped: false, appId: 'google-chrome.desktop'});
+  win.get_wm_class_instance = () => 'crx_picebhhlijnlefeleilfbanaghjlkkna';
+  h.display.emit('window-created', win); h.tick();
+  assert.equal(win.workspace, 6);
+  assert.deepEqual(win.moves, []);
+  h.extension.disable();
+});
+
 test('Spotify stays sticky even when the window reports skip_taskbar', () => {
   const h = harness({rules: [], monitorCount: 1, primary: 0});
   const win = windowMock({monitor: 0, mapped: true, appId: 'spotify_spotify.desktop'});
