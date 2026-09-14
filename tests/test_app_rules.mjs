@@ -114,7 +114,7 @@ test('unmapped windows expire without any native moves', () => {
   const h = harness(), win = windowMock();
   h.display.emit('window-created', win);
   assert.equal(h.timers.size, 1);
-  for (let i = 0; i < 60; i++) h.tick();
+  for (let i = 0; i < 200; i++) h.tick();
   assert.deepEqual(win.moves, []);
   assert.equal(h.timers.size, 0);
   assert.equal(win.handlers.size, 0);
@@ -229,5 +229,55 @@ test('programmatic monitor and workspace moves preserve existing all-workspace s
     }
     assert.equal(win.sticky, true);
   }
+  h.extension.disable();
+});
+
+test('Monkeytype Chrome PWA still moves to workspace 7 when skip_taskbar is set', () => {
+  const h = harness({rules: [], monitorCount: 3, primary: 1});
+  const win = windowMock({monitor: 2, mapped: true, appId: 'google-chrome.desktop'});
+  win.skip_taskbar = true;
+  win.get_wm_class = () => 'Google-chrome';
+  win.get_wm_class_instance = () => 'crx_picebhhlijnlefeleilfbanaghjlkkna';
+  h.display.emit('window-created', win); h.tick();
+  assert.equal(win.workspace, 6);
+  assert.deepEqual(win.moves, [1]);
+  h.extension.disable();
+});
+
+test('Monkeytype waits for the Chrome PWA class instance before treating google-chrome as done', () => {
+  const h = harness({rules: [], monitorCount: 3, primary: 1});
+  let instance = '';
+  const win = windowMock({monitor: 2, mapped: true, appId: 'google-chrome.desktop'});
+  win.get_wm_class = () => 'Google-chrome';
+  win.get_wm_class_instance = () => instance;
+  h.display.emit('window-created', win); h.tick();
+  assert.equal(win.workspace, null);
+  assert.deepEqual(win.moves, []);
+  instance = 'crx_picebhhlijnlefeleilfbanaghjlkkna';
+  h.tick();
+  assert.equal(win.workspace, 6);
+  assert.deepEqual(win.moves, [1]);
+  h.extension.disable();
+});
+
+test('Spotify and Discord become sticky from wm class when WindowTracker has no app id', () => {
+  const h = harness({rules: [], monitorCount: 1, primary: 0});
+  for (const [appId, wmClass] of [[null, 'Spotify'], [null, 'discord']]) {
+    const win = windowMock({monitor: 0, mapped: true, appId});
+    win.get_wm_class = () => wmClass;
+    h.display.emit('window-created', win); h.tick();
+    assert.equal(win.sticky, true, wmClass);
+    assert.equal(win.workspace, null);
+  }
+  h.extension.disable();
+});
+
+test('Spotify stays sticky even when the window reports skip_taskbar', () => {
+  const h = harness({rules: [], monitorCount: 1, primary: 0});
+  const win = windowMock({monitor: 0, mapped: true, appId: 'spotify_spotify.desktop'});
+  win.skip_taskbar = true;
+  win.get_wm_class = () => 'Spotify';
+  h.display.emit('window-created', win); h.tick();
+  assert.equal(win.sticky, true);
   h.extension.disable();
 });

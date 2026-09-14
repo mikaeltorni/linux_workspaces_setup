@@ -41,7 +41,7 @@ import { isWindowMoveSafe } from './monitorMovePolicy.js';
 import { workspaceIndexForRule } from './workspacePolicy.js';
 
 const RECHECK_INTERVAL_MS = 100;
-const MAX_RECHECKS = 50;
+const MAX_RECHECKS = 150;
 
 // Built-in workspace pins. Always active.
 const RULES = [
@@ -57,8 +57,8 @@ const RULES = [
 // installer writes that file (even with zero rules), it is the sole sticky
 // authority, so unmarking [p] in the menu really unsticks an app.
 const STICKY_FALLBACK_RULES = [
-  { appIds: ['discord.desktop', 'discord_discord.desktop'], sticky: true },
-  { appIds: ['spotify.desktop', 'spotify_spotify.desktop'], sticky: true },
+  { appIds: ['discord.desktop', 'discord_discord.desktop'], wmClasses: ['discord'], sticky: true },
+  { appIds: ['spotify.desktop', 'spotify_spotify.desktop'], wmClasses: ['spotify'], sticky: true },
 ];
 
 /**
@@ -206,13 +206,16 @@ function isWindowReady(win) {
  * @returns {void}
  */
 function applyRule(win, rule) {
-  if (!win || win.skip_taskbar || !isWindowReady(win)) {
-    return;
+  // Chrome PWAs and Electron/snap apps often report skip_taskbar while still
+  // being the real user-visible window (role=pop-up / browser-window).
+  if (!win || !isWindowReady(win)) {
+    return false;
   }
 
   // Placement is independent of the user's all-workspaces preference.
   // Mutter workspace changes can clear it, so restore it even after a failure.
   const keepSticky = Boolean(rule.sticky || win.is_on_all_workspaces?.());
+  let workspaceReady = rule.workspace === undefined;
   try {
     if (rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
       applyMonitor(win, rule);
@@ -222,13 +225,18 @@ function applyRule(win, rule) {
       const targetIndex = workspaceIndexForRule(rule.workspace);
       if (targetIndex < 0) {
         console.log(`[app-rules] invalid workspace number ${JSON.stringify(rule.workspace)}; ignoring workspace move`);
+        workspaceReady = true;
       } else {
         const wsMgr = global.workspace_manager;
         if (wsMgr.n_workspaces > targetIndex) {
           const ws = wsMgr.get_workspace_by_index(targetIndex);
           if (ws) {
             win.change_workspace(ws);
+            workspaceReady = true;
+            console.log(`[app-rules] moved ${getAppId(win) || 'window'} to workspace ${rule.workspace} (index ${targetIndex})`);
           }
+        } else {
+          console.log(`[app-rules] workspace ${rule.workspace} not available yet (${wsMgr.n_workspaces} exist); will retry`);
         }
       }
     }
@@ -243,6 +251,7 @@ function applyRule(win, rule) {
     }
   }
 
+  return workspaceReady;
 }
 
 /**
@@ -266,11 +275,17 @@ function matchAndApply(win, rules) {
   if (!appId && classes.length === 0) return false;
 
   for (const rule of rules) {
-    if (rule.appIds.some((id) => appId === id.toLowerCase()) ||
+    if (rule.appIds?.some((id) => appId === id.toLowerCase()) ||
         rule.wmClasses?.some(id => classes.includes(id.toLowerCase()))) {
-      applyRule(win, rule);
-      return true;
+      return applyRule(win, rule);
     }
+  }
+  // Chrome PWAs first show up as google-chrome.desktop; keep waiting until the
+  // crx_* instance arrives so the Monkeytype rule can match.
+  const chromeHost = appId.includes('chrome') || classes.includes('google-chrome');
+  const hasPwaInstance = classes.some(value => value.startsWith('crx_'));
+  if (chromeHost && !hasPwaInstance) {
+    return false;
   }
   return Boolean(appId);
 }
@@ -295,19 +310,26 @@ export default class AppRulesExtension extends Extension {
 
   /** Defer new/existing windows until mapped, with a bounded identity retry. */
   _schedule(win) {
-    if (!win || win.skip_taskbar || this._pending.has(win)) return;
+    if (!win || this._pending.has(win)) return;
     const pending = {sourceId: 0, unmanagedId: 0, attempts: 0};
     this._pending.set(win, pending);
     pending.unmanagedId = win.connect('unmanaged', () => this._cancel(win));
-    pending.sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, RECHECK_INTERVAL_MS, () => {
+    const tryApply = () => {
       pending.attempts++;
-      let done = false;
       try {
-        done = win.skip_taskbar || (isWindowReady(win) && matchAndApply(win, this._rules));
+        return isWindowReady(win) && matchAndApply(win, this._rules);
       } catch (error) {
         console.log(`[app-rules] deferred rule application failed: ${error}`);
-        done = true;
+        return true;
       }
+    };
+    if (tryApply()) {
+      pending.sourceId = 0;
+      this._cancel(win);
+      return;
+    }
+    pending.sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, RECHECK_INTERVAL_MS, () => {
+      const done = tryApply();
       if (!done && pending.attempts < MAX_RECHECKS) return GLib.SOURCE_CONTINUE;
       if (!done) console.log('[app-rules] stopped waiting for window mapping or application identity');
       pending.sourceId = 0; // This callback removes its own source on return.

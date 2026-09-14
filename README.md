@@ -175,9 +175,14 @@ After deployment, new code takes effect at the next manual session activation;
 the installer does not restart GNOME Shell.
 
 Monkeytype opens on workspace 7 on the primary monitor, including its Chrome
-PWA instance. Initialized windows hidden on other workspaces may be placed;
-unmapped windows on the current workspace still wait for mapping. Monitor moves
-precede workspace moves, and closed windows cancel pending placement.
+PWA instance. Placement still runs when Chrome reports skip-taskbar (role=pop-up)
+and waits for the `crx_*` window-class instance instead of treating
+`google-chrome.desktop` as a finished non-match. Spotify and Discord stay on
+all workspaces by desktop id or wm class (`spotify` / `discord`), including
+snap ids and skip-taskbar Electron windows. Initialized windows hidden on other
+workspaces may be placed; unmapped windows on the current workspace still wait
+for mapping. Monitor moves precede workspace moves, and closed windows cancel
+pending placement.
 
 Cursor defaults to the primary monitor. Its window class identifies startup
 windows before the desktop ID arrives, while saved user monitor rules retain
