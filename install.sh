@@ -25,14 +25,43 @@ SESSION_TYPE="${XDG_SESSION_TYPE:-unknown}"
 # Load the shared installer framework + shared install-time helpers (single
 # source of truth in linux_installation_scripts_functions) BEFORE workspace_setup
 # so the repo's own msg()/apt_install() (sourced next) override the shared ones.
-# No vendored copy: resolve a sibling checkout or download on demand.
+# No vendored copy: resolve a sibling checkout or clone on demand.
 for __isc_d in "${ISC_FUNCTIONS_DIR:-}" \
                "$SCRIPT_DIR/../linux_installation_scripts_functions" \
                "$HOME/projects/linux_installation_scripts_functions"; do
   [ -n "$__isc_d" ] && [ -f "$__isc_d/component_loader.sh" ] && { source "$__isc_d/component_loader.sh"; break; }
 done
-declare -F isc_load_helpers >/dev/null 2>&1 || \
-  source <(curl -fsSL "https://raw.githubusercontent.com/mikaeltorni/linux_installation_scripts_functions/${ISC_FUNCTIONS_REF:-master}/component_loader.sh")
+if ! declare -F isc_load_helpers >/dev/null 2>&1; then
+  __isc_framework_ref="${ISC_FUNCTIONS_REF:-master}"
+  __isc_framework_key="${__isc_framework_ref//\//_}"
+  __isc_framework_cache="${XDG_CACHE_HOME:-$HOME/.cache}/installation_scripts/framework-${__isc_framework_key}"
+  __isc_framework_loader="$__isc_framework_cache/component_loader.sh"
+  if [[ ! -f "$__isc_framework_loader" ]]; then
+    command -v git >/dev/null 2>&1 || {
+      printf 'ERROR: git is required to clone the shared installer framework.\n' >&2
+      exit 1
+    }
+    mkdir -p "${__isc_framework_cache%/*}"
+    __isc_framework_tmp="$(mktemp -d "${__isc_framework_cache%/*}/.framework-${__isc_framework_key}.XXXXXX")"
+    printf 'Cloning shared installer framework ref %s for standalone installation.\n' \
+      "$__isc_framework_ref" >&2
+    if ! GIT_TERMINAL_PROMPT=0 git clone --quiet --depth 1 --single-branch \
+      --branch "$__isc_framework_ref" \
+      https://github.com/mikaeltorni/linux_installation_scripts_functions.git \
+      "$__isc_framework_tmp/repository"; then
+      printf 'ERROR: could not clone the shared installer framework; check GitHub access.\n' >&2
+      exit 1
+    fi
+    if [[ ! -e "$__isc_framework_cache" ]] && mv "$__isc_framework_tmp/repository" "$__isc_framework_cache"; then
+      rmdir "$__isc_framework_tmp" 2>/dev/null || true
+    else
+      __isc_framework_loader="$__isc_framework_tmp/repository/component_loader.sh"
+    fi
+  fi
+  ISC_FUNCTIONS_DIR="${__isc_framework_loader%/*}"
+  export ISC_FUNCTIONS_DIR
+  source "$__isc_framework_loader"
+fi
 isc_load_helpers
 
 source "$SCRIPT_DIR/lib/workspace_setup.sh"
