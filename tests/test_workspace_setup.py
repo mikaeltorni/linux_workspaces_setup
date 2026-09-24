@@ -10,14 +10,26 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-HELPERS = ROOT_DIR.parent / "linux_installation_scripts_functions" / "installer_helpers.sh"
+
+
+def _shared_helper(name: str) -> Path:
+    """Find the shared installer module from a live checkout or nested worktree."""
+    for parent in ROOT_DIR.parents:
+        helper = parent / "linux_installation_scripts_functions" / name
+        if helper.is_file():
+            return helper
+    return ROOT_DIR.parent / "linux_installation_scripts_functions" / name
+
+
+HELPERS = _shared_helper("installer_helpers.sh")
+HOTKEY_CAPTURE = _shared_helper("hotkey_capture.sh")
 
 
 def run_bash(script: str, env=None) -> subprocess.CompletedProcess[str]:
     # The shared install-time helpers (run_as_target, need_cmd, …) now live in the
     # framework and are loaded by install.sh before lib/workspace_setup.sh, so the
     # harness sources them first; workspace_setup.sh then overrides its own msg().
-    full = f'source {str(HELPERS)!r}\n{script}'
+    full = f'source {str(HELPERS)!r}\nsource {str(HOTKEY_CAPTURE)!r}\n{script}'
     return subprocess.run(
         ["bash", "-c", full],
         cwd=ROOT_DIR,
@@ -198,7 +210,7 @@ TARGET_USER=$(id -un)
 TARGET_HOME={str(tmp_path)!r}
 WORKSPACE_COUNT=2
 WORKSPACE_HOTKEY_CONFIG={str(config)!r}
-source {str(ROOT_DIR.parent / 'linux_installation_scripts_functions' / 'hotkey_capture.sh')!r}
+source {str(HOTKEY_CAPTURE)!r}
 source lib/workspace_setup.sh
 load_hotkey_workspace_binding_config
 printf '%s\n' "$WORKSPACE_SWITCH_BINDINGS" "$WORKSPACE_MOVE_BINDINGS"

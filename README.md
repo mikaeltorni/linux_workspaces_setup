@@ -13,7 +13,9 @@ enhance it and never block installation when absent.
 
 - **Build-time (soft):** the shared installer component framework
   [`linux_installation_scripts_functions`](https://github.com/mikaeltorni/linux_installation_scripts_functions) —
-  loaded from a sibling checkout when present, otherwise downloaded on demand.
+  loaded from a sibling checkout when present, otherwise cloned from the private
+  framework repository into the user's cache. Standalone first use needs Git
+  access to that repository.
 - **Delegated install (optional):** when it sits beside it, this installer also
   installs
   [`linux_automatic_window_tiling`](https://github.com/mikaeltorni/linux_automatic_window_tiling)
