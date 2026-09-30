@@ -577,11 +577,11 @@ def test_builtin_smartgit_rule_pins_workspace_three_and_monitor_three():
 
 
 def test_builtin_monkeytype_rule_pins_workspace_seven():
-    """Monkeytype and its Chrome PWA alias open on visible workspace 7."""
+    """Monkeytype and its Chrome PWA alias open on visible workspace 7 and monitor 2."""
     source = (ROOT_DIR / "configs/gnome-extensions/app-rules@local/extension.js").read_text(
         encoding="utf-8"
     )
-    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], titles: ['monkeytype'], workspace: 7, monitor: 'primary' }" in source
+    assert "{ appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], titles: ['monkeytype'], workspace: 7, monitor: 2 }" in source
 
 
 def test_builtin_gitkraken_rule_pins_workspace_three_and_monitor_two():

@@ -176,8 +176,10 @@ Run the desktop-free regression suite with `node --test tests/test_app_rules.mjs
 After deployment, new code takes effect at the next manual session activation;
 the installer does not restart GNOME Shell.
 
-Monkeytype opens on workspace 7 on the primary monitor, including its Chrome
-PWA instance. Placement still runs when Chrome reports skip-taskbar (role=pop-up)
+Monkeytype opens on workspace 7 on monitor 2 (the primary display), including
+its Chrome PWA instance. The monitor move is retried until the window is safe
+to move, so an early workspace pin cannot leave it on monitor 1. Placement
+still runs when Chrome reports skip-taskbar (role=pop-up)
 and waits for the `crx_*` window-class instance instead of treating
 `google-chrome.desktop` as a finished non-match. Chrome windows whose title
 contains Monkeytype are matched the same way. Workspace pins still apply when
