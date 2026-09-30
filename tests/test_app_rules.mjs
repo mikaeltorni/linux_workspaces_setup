@@ -168,7 +168,7 @@ test('Spotify and Discord follow the upper screen while Cursor follows the lower
   }
 });
 
-test('Monkeytype uses workspace 7 and the primary monitor even when hidden', () => {
+test('Monkeytype uses workspace 7 and monitor 2 even when hidden', () => {
   const h = harness({rules: [], monitorCount: 3, primary: 1});
   const win = windowMock({monitor: 2, mapped: false, appId: 'google-chrome.desktop'});
   win.get_wm_class_instance = () => 'crx_picebhhlijnlefeleilfbanaghjlkkna';
@@ -300,6 +300,22 @@ test('Monkeytype workspace pin applies when monitor move is not yet safe', () =>
   h.display.emit('window-created', win); h.tick();
   assert.equal(win.workspace, 6);
   assert.deepEqual(win.moves, []);
+  assert.equal(h.timers.size, 1);
+  h.extension.disable();
+});
+
+test('Monkeytype moves to monitor 2 once the window becomes move-safe', () => {
+  const h = harness({rules: [], monitorCount: 3, primary: 0});
+  const win = windowMock({monitor: -1, mapped: false, appId: 'google-chrome.desktop'});
+  win.get_wm_class_instance = () => 'crx_picebhhlijnlefeleilfbanaghjlkkna';
+  h.display.emit('window-created', win); h.tick();
+  assert.equal(win.workspace, 6);
+  assert.deepEqual(win.moves, []);
+  win.monitor = 0;
+  win.actor.mapped = true;
+  h.tick();
+  assert.deepEqual(win.moves, [1]);
+  assert.equal(h.timers.size, 0);
   h.extension.disable();
 });
 

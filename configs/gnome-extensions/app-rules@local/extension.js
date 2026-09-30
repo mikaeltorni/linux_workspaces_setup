@@ -48,7 +48,7 @@ const RULES = [
   { appIds: ['cursor.desktop'], wmClasses: ['cursor'], workspace: 1, monitor: 'primary' },
   { appIds: ['gitkraken.desktop', 'gitkraken_gitkraken.desktop'], workspace: 3, monitor: 2 },
   { appIds: ['smartgit.desktop'], workspace: 3, monitor: 3, wmClasses: ['smartgit'] },
-  { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], titles: ['monkeytype'], workspace: 7, monitor: 'primary' },
+  { appIds: ['monkeytype.desktop', 'chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop'], wmClasses: ['crx_picebhhlijnlefeleilfbanaghjlkkna'], titles: ['monkeytype'], workspace: 7, monitor: 2 },
   { appIds: ['chatgpt.desktop'], workspace: 1 },
   { appIds: ['com.obsproject.Studio.desktop', 'obs.desktop'], workspace: 8 },
 ];
@@ -213,8 +213,11 @@ function applyRule(win, rule) {
   const ready = isWindowReady(win);
   const keepSticky = Boolean(rule.sticky || win.is_on_all_workspaces?.());
   const wantsWorkspace = rule.workspace !== undefined;
+  const wantsMonitor = rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0;
   // Monitor moves need a mapped actor. Workspace/sticky pins still apply to
   // off-workspace PWA windows whose compositor actor is not move-safe yet.
+  // A workspace pin must not finish the rule while the monitor pin is still
+  // outstanding: Chrome often maps onto monitor 1 before the actor is movable.
   if (!ready && !wantsWorkspace && !keepSticky) {
     return false;
   }
@@ -222,9 +225,14 @@ function applyRule(win, rule) {
   // Placement is independent of the user's all-workspaces preference.
   // Mutter workspace changes can clear it, so restore it even after a failure.
   let workspaceReady = !wantsWorkspace;
+  let monitorReady = !wantsMonitor;
   try {
-    if (ready && rule.monitor !== undefined && rule.monitor !== null && rule.monitor !== 0) {
-      applyMonitor(win, rule);
+    if (wantsMonitor && ready) {
+      const target = resolveRuleMonitor(rule);
+      if (target >= 0) {
+        applyMonitor(win, rule);
+        monitorReady = win.get_monitor() === target;
+      }
     }
 
     if (rule.workspace !== undefined) {
@@ -237,9 +245,17 @@ function applyRule(win, rule) {
         if (wsMgr.n_workspaces > targetIndex) {
           const ws = wsMgr.get_workspace_by_index(targetIndex);
           if (ws) {
-            win.change_workspace(ws);
+            let alreadyThere = false;
+            try {
+              alreadyThere = win.get_workspace?.()?.index?.() === targetIndex;
+            } catch (e) {
+              alreadyThere = false;
+            }
+            if (!alreadyThere) {
+              win.change_workspace(ws);
+              console.log(`[app-rules] moved ${getAppId(win) || 'window'} to workspace ${rule.workspace} (index ${targetIndex})`);
+            }
             workspaceReady = true;
-            console.log(`[app-rules] moved ${getAppId(win) || 'window'} to workspace ${rule.workspace} (index ${targetIndex})`);
           }
         } else {
           console.log(`[app-rules] workspace ${rule.workspace} not available yet (${wsMgr.n_workspaces} exist); will retry`);
@@ -257,7 +273,7 @@ function applyRule(win, rule) {
     }
   }
 
-  return workspaceReady;
+  return workspaceReady && monitorReady;
 }
 
 /** Collect lowercased wm class / instance strings from a Meta.Window. */
