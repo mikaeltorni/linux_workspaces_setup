@@ -75,6 +75,7 @@ first_existing_desktop() {{
     *smartgit*) printf '%s\\n' smartgit.desktop ;;
   esac
 }}
+remove_gsettings_list() {{ :; }}
 append_gsettings_list() {{ printf '%s\\n' "$3"; }}
 unset MANAGED_APP_WORKSPACES SELECTED_APP_WORKSPACES
 configure_auto_move_windows
@@ -84,6 +85,54 @@ configure_auto_move_windows
         assert proc.returncode == 0, proc.stderr
         assert "gitkraken_gitkraken.desktop:3" in proc.stdout
         assert "smartgit.desktop:3" in proc.stdout
+
+
+def test_monkeytype_auto_move_pins_both_desktop_ids_to_workspace_seven():
+    """Auto Move Windows must route both Monkeytype IDs to workspace 7."""
+    monkeytype_ids = [
+        "monkeytype.desktop",
+        "chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop",
+    ]
+    for managed in (False, True):
+        with tempfile.TemporaryDirectory() as td:
+            env = _sticky_env(td)
+            if managed:
+                env["MANAGED_APP_WORKSPACES"] = "|".join(monkeytype_ids)
+                env["SELECTED_APP_WORKSPACES"] = "|".join(monkeytype_ids) + "=1"
+            proc = run_bash(
+                """
+set -euo pipefail
+TARGET_USER=$(id -un)
+TARGET_HOME={home!r}
+source lib/workspace_setup.sh
+install_auto_move_windows_extension() {{ return 0; }}
+enable_shell_extension() {{ :; }}
+gsettings_key_exists() {{ return 0; }}
+first_existing_desktop() {{
+  case "$*" in
+    *gitkraken*) printf '%s\\n' gitkraken_gitkraken.desktop ;;
+    *smartgit*) printf '%s\\n' smartgit.desktop ;;
+    *monkeytype*) printf '%s\\n' monkeytype.desktop ;;
+  esac
+}}
+remove_gsettings_list() {{ printf 'remove:%s\\n' "$3"; }}
+append_gsettings_list() {{ printf 'append:%s\\n' "$3"; }}
+configure_auto_move_windows
+""".format(home=str(Path(td) / "home")),
+                env=env,
+            )
+            assert proc.returncode == 0, proc.stderr
+            operations = proc.stdout.splitlines()
+            for app_id in monkeytype_ids:
+                assert f"remove:{app_id}:1" in operations
+                assert f"remove:{app_id}:9" in operations
+                assert f"append:{app_id}:7" in operations
+            if managed:
+                final_remove = len(operations) - 1 - operations[::-1].index(
+                    "remove:monkeytype.desktop:1"
+                )
+                assert operations.index("append:monkeytype.desktop:1") < final_remove
+                assert final_remove < operations.index("append:monkeytype.desktop:7")
 
 
 def test_hotkey_components_are_owned_by_hotkey_repo():
