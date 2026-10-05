@@ -637,6 +637,18 @@ configure_auto_move_windows() {
     smartgit_desktop="$(first_existing_desktop smartgit.desktop)"
     [[ -n "$smartgit_desktop" ]] && append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${smartgit_desktop}:${visible_workspace}"
   fi
+
+  # Give Auto Move Windows the PWA IDs so it places Monkeytype as soon as its
+  # app is created. app-rules remains the fallback and handles its monitor pin.
+  local monkeytype_id number
+  for monkeytype_id in \
+    monkeytype.desktop \
+    chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop; do
+    for number in {1..9}; do
+      remove_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${monkeytype_id}:${number}"
+    done
+    append_gsettings_list org.gnome.shell.extensions.auto-move-windows application-list "${monkeytype_id}:7"
+  done
 }
 
 configure_albert_keybindings() {
