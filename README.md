@@ -68,7 +68,7 @@ mkdir -p "$HOME/.config/linux-workspaces-setup"
 cp ~/projects/linux_workspaces_setup/configs/workspace-bindings.conf.example \
   "$HOME/.config/linux-workspaces-setup/workspace-bindings.conf"
 # Keep the WORKSPACE_*_BINDINGS lines aligned with linux_hotkey_setup.
-sudo bash ~/projects/linux_workspaces_setup/install.sh
+bash ~/projects/linux_workspaces_setup/install.sh
 ```
 
 The config format is `INDEX:ACCELERATOR` entries separated by `|`. Accelerators
@@ -88,8 +88,9 @@ This repository configures the Super+U send-mode target keys and the no-switch
 `<Control>` variants on the `monitor-window-hotkeys@local` extension (which is
 installed by the standalone `linux_monitor_window_hotkeys` repository, not
 bundled here) so they stay in sync with these maps. Configure the primary
-switch/move accelerators through `linux_hotkey_setup`. GNOME Shell extensions require a logout/login to
-load newly copied shell-extension files. The installer enables extensions
+switch/move accelerators through `linux_hotkey_setup`. GSettings changes apply
+immediately. After changing extension code, activate it with `Alt+F2`, then `r`
+on X11; on Wayland, log out and back in. The installer enables extensions
 without replacing `gnome-shell` and preserves your existing enabled-extension
 list.
 
@@ -108,7 +109,11 @@ for the same physical pointer.
 
 ## Deployment notes
 
-Run `sudo bash install.sh` once from the master chain after all sibling repos have been cloned. For standalone runs, keep `../linux_automatic_window_tiling` nearby because this repo delegates automatic tiling activation to that installer with `<Super>t`. If you only need GNOME GSettings changes on an existing desktop session, run as the target user; root is needed for optional apt/package steps and Wayland shell-extension installation.
+Run `bash install.sh` as the desktop user for standalone setup. The master chain
+invokes this repository after cloning its siblings. Keep
+`../linux_automatic_window_tiling` nearby because this repo delegates automatic
+tiling activation to that installer with `<Super>t`. User-level settings apply
+in the running session; package steps are skipped in user mode.
 
 ## Component selection
 
@@ -119,10 +124,33 @@ terminal; the master installer drives it non-interactively.
 
 ```bash
 bash install.sh                 # interactive component selection (TTY), else defaults
+bash install.sh --config NAME   # load installation_configs/NAME (default.json when omitted)
 bash install.sh --default       # install all default-on components, no prompts
 bash install.sh --all           # install every component, no prompts
 bash install.sh --select a,b    # install exactly these component ids
+bash install.sh --reconfigure a,b # re-apply these component ids
+bash install.sh --uninstall a,b  # uninstall these component ids
 bash install.sh --list-components  # print: id<TAB>label<TAB>default
+bash install.sh --list-configurable-components
+bash install.sh --list-select-configure-components
+bash install.sh --list-component-config-values
+bash install.sh --configure-component ID
+bash install.sh --detect
+bash install.sh --export-selection # print the resolved selection as JSON
+bash install.sh --auth          # allow authenticated Git clone/pull in components
+bash install.sh --help          # show all installer commands
+bash install.sh -h              # same as --help
+```
+
+`--config`, `--select`, `--reconfigure`, `--uninstall`, and
+`--configure-component` also accept the `--option=value` form. The installer
+also exposes read-only app-rule queries for
+the selected workspace, sticky, and monitor mappings:
+
+```bash
+bash install.sh --list-selected-app-workspaces
+bash install.sh --list-selected-sticky-apps
+bash install.sh --list-selected-app-monitors
 ```
 
 In the interactive menu, **space** toggles a component, `a`/`n` select all
@@ -170,20 +198,23 @@ This notice is intended to clarify the nature of the project and does not impose
 
 App rules are owned solely by this repository. Monitor numbers are 1-based;
 saved screen geometry takes precedence over numeric indexes after renumbering.
-Window creation waits for mapping and app identity for up to five seconds,
+Window creation waits for mapping and app identity for up to fifteen seconds,
 and cancels pending work when a window closes or the extension is disabled.
 Run the desktop-free regression suite with `node --test tests/test_app_rules.mjs`.
-After deployment, new code takes effect at the next manual session activation;
-the installer does not restart GNOME Shell.
+After deployment, GSettings changes apply live. Extension code takes effect
+after the session-specific activation described above; the installer does not
+restart GNOME Shell.
 
 Monkeytype opens on workspace 7 on monitor 2 (the primary display), including
-its Chrome PWA instance. The monitor move is retried until the window is safe
-to move, so an early workspace pin cannot leave it on monitor 1. Placement
-still runs when Chrome reports skip-taskbar (role=pop-up)
+its Chrome PWA instance. Auto Move Windows pins both `monkeytype.desktop` and
+the Chrome PWA app ID `chrome-picebhhlijnlefeleilfbanaghjlkkna-Default.desktop`
+to workspace 7 as the app window is created. The app-rules fallback also
+handles Chrome windows that report skip-taskbar (role=pop-up)
 and waits for the `crx_*` window-class instance instead of treating
 `google-chrome.desktop` as a finished non-match. Chrome windows whose title
-contains Monkeytype are matched the same way. Workspace pins still apply when
-the monitor move is not yet safe. Spotify and Discord stay on
+contains Monkeytype are matched the same way. It retries the monitor move until
+the window is safe to move, and still pins the window to workspace 7 while that
+move is pending. Spotify and Discord stay on
 all workspaces by desktop id or wm class (`spotify` / `discord`), including
 snap ids and skip-taskbar Electron windows. Initialized windows hidden on other
 workspaces may be placed; unmapped windows on the current workspace still wait
