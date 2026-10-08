@@ -75,11 +75,14 @@ source "$SCRIPT_DIR/lib/lifecycle.sh"
 # While the file has never been written, the app-rules extension applies its
 # built-in legacy fallback (Spotify + Discord), so report those when the
 # extension is deployed.
+# Parameters: none. Returns: zero with stored or legacy sticky desktop IDs.
 list_selected_sticky_apps() {
   local file="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
   if [ -f "$file" ]; then
-    python3 "${APP_RULES_RULES_PY:-$SCRIPT_DIR/scripts/app_rules_rules.py}" \
-      --file "$file" list-sticky 2>/dev/null || true
+    if ! declare -F app_rules_bin >/dev/null 2>&1; then
+      source "$SCRIPT_DIR/lib/app_rules_bin.sh" || return 1
+    fi
+    app_rules_bin --file "$file" list-sticky 2>/dev/null || true
     return 0
   fi
   if [ -d "$TARGET_HOME/.local/share/gnome-shell/extensions/app-rules@local" ]; then
@@ -99,11 +102,14 @@ list_selected_sticky_apps() {
 # Spotify/Discord monitor-1 defaults until a current writer records that monitor
 # choices were explicitly managed. The marker then makes even an empty monitor
 # list authoritative, so clearing every pin does not bring defaults back.
+# Parameters: none. Returns: stored/legacy monitor choices, one when never written.
 list_selected_app_monitors() {
   local file="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
   [ -f "$file" ] || return 1
-  python3 "${APP_RULES_RULES_PY:-$SCRIPT_DIR/scripts/app_rules_rules.py}" \
-    --file "$file" list-monitors \
+  if ! declare -F app_rules_bin >/dev/null 2>&1; then
+    source "$SCRIPT_DIR/lib/app_rules_bin.sh" || return 1
+  fi
+  app_rules_bin --file "$file" list-monitors \
     --legacy-defaults 'spotify.desktop|spotify_spotify.desktop=1;discord.desktop|discord_discord.desktop=1' \
     2>/dev/null || true
 }
