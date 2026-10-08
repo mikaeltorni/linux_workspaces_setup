@@ -2,6 +2,7 @@
 name = "wss-tools"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.75"
 description = "Workspace installer helpers"
 license = "MIT"
 publish = false
@@ -11,3 +12,8 @@ name = "wss-tools"
 path = "src/main.rs"
 
 [dependencies]
+serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision"] }
+
+[[bin]]
+name = "app-rules-rules"
+path = "src/app_rules_main.rs"

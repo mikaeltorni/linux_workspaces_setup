@@ -1,0 +1,42 @@
+{
+  "managed": {
+    "sticky": true,
+    "monitors": true
+  },
+  "rules": [
+    {
+      "appIds": [
+        "spotify.desktop",
+        "spotify_spotify.desktop"
+      ],
+      "sticky": true,
+      "monitor": 2,
+      "monitorConnector": "HDMI-0",
+      "monitorGeometry": {
+        "x": 3840,
+        "y": 0,
+        "width": 2560,
+        "height": 1440
+      }
+    },
+    {
+      "appIds": [
+        "\u00e9diteur.desktop"
+      ],
+      "sticky": true
+    },
+    {
+      "appIds": [
+        "discord.desktop"
+      ],
+      "monitor": 1,
+      "monitorConnector": "DP-4",
+      "monitorGeometry": {
+        "x": 0,
+        "y": 0,
+        "width": 3840,
+        "height": 2160
+      }
+    }
+  ]
+}

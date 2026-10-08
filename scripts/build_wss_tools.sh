@@ -17,29 +17,39 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DIST_DIR="$REPO_ROOT/dist"
-DIST_BIN="$DIST_DIR/wss-tools"
-TARGET_BIN="$REPO_ROOT/target/release/wss-tools"
+BIN_NAME=wss-tools
 PRINT_ONLY=0
 RUST_IMAGE="${WSS_RUST_IMAGE:-rust:1-bookworm}"
 
 log() { printf '[build_wss_tools] %s\n' "$*" >&2; }
 
+# Print accepted builder flags to stderr.
+# Parameters: none. Returns: zero.
 usage() {
   cat >&2 <<'EOF'
-Usage: bash scripts/build_wss_tools.sh [--print]
+Usage: bash scripts/build_wss_tools.sh [--bin wss-tools|app-rules-rules] [--print]
 
-Build the wss-tools release binary into dist/wss-tools.
+Build the requested native release binary into dist/.
 With --print, also write the absolute binary path to stdout.
 EOF
 }
 
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --print) PRINT_ONLY=1; shift ;;
-    -h|--help) usage; exit 0 ;;
-    *) log "Unknown argument: $1"; usage; exit 1 ;;
-  esac
-done
+# Parse the requested native target without invoking a build.
+# Parameters: $@ - raw builder flags.
+# Returns: zero with BIN_NAME/PRINT_ONLY set, or usage failure.
+parse_build_args() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --bin)
+        [ $# -ge 2 ] || { usage; return 1; }
+        case "$2" in wss-tools|app-rules-rules) BIN_NAME="$2" ;; *) usage; return 1 ;; esac
+        shift 2 ;;
+      --print) PRINT_ONLY=1; shift ;;
+      -h|--help) usage; exit 0 ;;
+      *) log "Unknown argument: $1"; usage; return 1 ;;
+    esac
+  done
+}
 
 # reclaim_build_artifacts_for_invoker — When this script runs under sudo, cargo
 # writes root-owned dist/ and target/. Hand them back to SUDO_USER so a later
@@ -99,11 +109,13 @@ ensure_cargo_on_path() {
   command -v cargo >/dev/null 2>&1
 }
 
+# Build and stage the requested binary with the invoking developer toolchain.
+# Parameters: none. Returns: build/install status.
 build_with_cargo() {
   log "Building with local cargo…"
   (
     cd "$REPO_ROOT"
-    cargo build --release --bin wss-tools
+    cargo build --locked --release --bin "$BIN_NAME"
   )
   mkdir -p "$DIST_DIR"
   install -m 0755 "$TARGET_BIN" "$DIST_BIN"
@@ -119,6 +131,8 @@ container_engine() {
   fi
 }
 
+# Build the requested binary in the established rootless container fallback.
+# Parameters: none. Returns: build/install status.
 build_with_container() {
   local engine
   engine="$(container_engine)" || {
@@ -134,11 +148,16 @@ build_with_container() {
     -v "$REPO_ROOT:/src:rw" \
     -w /src \
     "$RUST_IMAGE" \
-    cargo build --release --bin wss-tools
+    cargo build --locked --release --bin "$BIN_NAME"
   install -m 0755 "$TARGET_BIN" "$DIST_BIN"
 }
 
+# Dispatch the existing local/container/fresh-binary build policy.
+# Parameters: $@ - raw builder flags. Returns: ready binary path or exits on failure.
 main() {
+  parse_build_args "$@" || return 1
+  DIST_BIN="$DIST_DIR/$BIN_NAME"
+  TARGET_BIN="$REPO_ROOT/target/release/$BIN_NAME"
   if ensure_cargo_on_path; then
     build_with_cargo
   elif dist_is_fresh; then
@@ -155,7 +174,7 @@ main() {
     mkdir -p "$DIST_DIR"
     install -m 0755 "$TARGET_BIN" "$DIST_BIN"
   else
-    log "Cannot build wss-tools: install cargo (rustup or apt install cargo) or docker/podman."
+    log "Cannot build $BIN_NAME: install cargo (rustup or apt install cargo) or docker/podman."
     exit 1
   fi
 

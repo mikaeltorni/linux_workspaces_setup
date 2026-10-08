@@ -109,25 +109,54 @@ pub fn format_strv(values: &[String]) -> String {
     format!("[{}]", parts.join(", "))
 }
 
-/// CLI entry: `append|remove <value>` reading `CURRENT` from the environment.
-///
-/// # Returns
-/// `0` after printing the serialized array. `2` on usage errors.
+/// Remove entries containing the requested lifecycle keybinding fragment.
+/// Parameters: raw - current GSettings string-array text; fragment - substring to remove.
+/// Returns: unrelated values in original order.
+pub fn remove_containing(raw: Option<&str>, fragment: &str) -> Vec<String> {
+    parse_strv(raw)
+        .into_iter()
+        .filter(|item| !item.contains(fragment))
+        .collect()
+}
+
+enum Action {
+    Append,
+    Remove,
+    RemoveContaining,
+}
+
+/// Parse raw command shape and operation before string-array work.
+/// Parameters: args - command-line tokens.
+/// Returns: typed operation and operand, or none for invalid usage.
+fn parse_cli(args: &[String]) -> Option<(Action, &str)> {
+    if args.len() != 2 {
+        return None;
+    }
+    let action = match args[0].as_str() {
+        "append" => Action::Append,
+        "remove" => Action::Remove,
+        "remove-containing" => Action::RemoveContaining,
+        _ => return None,
+    };
+    Some((action, &args[1]))
+}
+
+/// Delegate GSettings CLI operations using CURRENT from the environment.
+/// Parameters: none.
+/// Returns: zero with serialized array, two for invalid command shape.
 pub fn run_cli() -> i32 {
     let args: Vec<String> = env::args().skip(1).collect();
-    if args.len() != 2 || (args[0] != "append" && args[0] != "remove") {
-        logging::error("Usage: wss-tools append|remove <value>");
-        eprintln!("Usage: wss-tools append|remove <value>");
+    let Some((action, value)) = parse_cli(&args) else {
+        logging::error("Usage: wss-tools append|remove|remove-containing <value>");
+        eprintln!("Usage: wss-tools append|remove|remove-containing <value>");
         return 2;
-    }
-    let action = &args[0];
-    let value = &args[1];
+    };
     let current = env::var("CURRENT").unwrap_or_default();
-    logging::info(format!("wss-tools {action} value={value}"));
-    let result = if action == "append" {
-        append_strv(Some(&current), value)
-    } else {
-        remove_strv(Some(&current), value)
+    logging::info(format!("wss-tools {} value={value}", args[0]));
+    let result = match action {
+        Action::Append => append_strv(Some(&current), value),
+        Action::Remove => remove_strv(Some(&current), value),
+        Action::RemoveContaining => remove_containing(Some(&current), value),
     };
     println!("{}", format_strv(&result));
     0

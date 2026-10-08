@@ -10,6 +10,7 @@ WORKSPACE_SETUP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_SETUP_DIR="$(cd "$WORKSPACE_SETUP_LIB_DIR/.." && pwd)"
 # shellcheck source=wss_bin.sh
 source "$WORKSPACE_SETUP_LIB_DIR/wss_bin.sh"
+source "$WORKSPACE_SETUP_LIB_DIR/app_rules_bin.sh"
 WORKSPACE_SETUP_CONFIG_DIR="$WORKSPACE_SETUP_DIR/configs"
 : "${SCRIPT_DIR:=$WORKSPACE_SETUP_DIR}"
 : "${CONFIG_DIR:=$WORKSPACE_SETUP_CONFIG_DIR}"
@@ -436,12 +437,9 @@ EOF
 # keeps its built-in legacy sticky fallback (Spotify + Discord), so clean
 # installs behave as before.
 APP_RULES_USER_RULES_FILE="${APP_RULES_USER_RULES_FILE:-$TARGET_HOME/.config/app-rules/user-rules.json}"
-# Helper owning the JSON format (merging sticky and monitor rules, reading them
-# back). Overridable so tests can point at a checkout copy.
-APP_RULES_RULES_PY="${APP_RULES_RULES_PY:-$SCRIPT_DIR/scripts/app_rules_rules.py}"
 
 # app_rules_monitor_layout - Print the current display layout as the TSV rows
-# app_rules_rules.py records alongside each monitor rule (connector + logical
+# the native app-rule helper records alongside each monitor rule (connector + logical
 # geometry), so a rule keeps pointing at the same physical screen even if Mutter
 # renumbers its monitors later.
 #
@@ -466,7 +464,8 @@ app_rules_monitor_layout() {
 # empty sticky list is meaningful: it suppresses the extension's built-in sticky
 # fallback once the menu becomes the authority.
 #
-# Returns: 0 always (skipped, written, or degraded to a warning).
+# Parameters: none; reads managed selections from the installer environment.
+# Returns: zero (skipped, written, or degraded to a warning).
 write_app_rules_user_rules() {
   local -a flags=()
   [[ ${MANAGED_STICKY_APPS+x} ]] && flags+=(--managed-sticky)
@@ -475,13 +474,13 @@ write_app_rules_user_rules() {
     log_debug "write_app_rules_user_rules: no managed selection exported; keeping existing rules"
     return 0
   fi
-  if [ ! -f "$APP_RULES_RULES_PY" ]; then
-    log_line WARN "app_rules_rules.py not found at $APP_RULES_RULES_PY; keeping existing rules"
+  if ! install_app_rules_bin; then
+    log_line WARN "native app-rule helper unavailable; keeping existing rules"
     return 0
   fi
   msg "Writing app-rules application rules (all-workspaces + monitor placement)"
   local summary
-  if ! summary="$(run_as_target python3 "$APP_RULES_RULES_PY" \
+  if ! summary="$(run_as_target "$APP_RULES_TARGET_BIN" \
       --file "$APP_RULES_USER_RULES_FILE" write \
       --sticky "${SELECTED_STICKY_APPS:-}" \
       --monitors "${SELECTED_APP_MONITORS:-}" \

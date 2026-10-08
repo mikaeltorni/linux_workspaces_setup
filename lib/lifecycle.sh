@@ -14,20 +14,16 @@ ws_remove_extension() {
 ws_mediakeys_has() {
   run_as_target gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null | grep -q "$1"
 }
+# Remove all custom keybindings containing one installer-owned fragment.
+# Parameters: $1 - keybinding fragment.
+# Returns: zero after best-effort setting, or failure resolving the native helper.
 ws_mediakeys_drop() {
-  local frag="$1" current
+  local frag="$1" current filtered
   current="$(run_as_target gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null || printf '[]')"
-  RMF="$frag" python3 - "$current" <<'PY' >/tmp/.ws_filtered 2>/dev/null || true
-import ast,os,sys
-raw=sys.argv[1].strip() or "[]"
-try:
-  items=ast.literal_eval(raw); items=items if isinstance(items,list) else []
-except Exception: items=[]
-print("["+", ".join("'"+p+"'" for p in items if os.environ["RMF"] not in p)+"]")
-PY
-  run_as_target gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$(cat /tmp/.ws_filtered)" 2>/dev/null || true
-  rm -f /tmp/.ws_filtered
+  filtered="$(CURRENT="$current" wss_bin remove-containing "$frag")" || return 1
+  run_as_target gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$filtered" 2>/dev/null || true
 }
+
 ws_delegate() {
   local dir="$TARGET_HOME/projects/$1"
   [ -f "$dir/install.sh" ] && run_as_target bash "$dir/install.sh" "${@:2}" || true
