@@ -20,6 +20,7 @@ installer_sources = [root / 'install.sh', root / 'scripts/install_standalone.sh'
 assert any('.installer-support/bootstrap.sh' in path.read_text() for path in installer_sources if path.is_file()), 'Installer does not use the packaged framework'
 # LUKS owner policy permits static checks only outside a disposable VM.
 if root.name.startswith('linux_luks_configuration') or (root / 'lib/luks_configuration.sh').is_file():
+    assert '_isc_validate_ids()' in (support / 'component_runtime.sh').read_text(), 'Missing shared pre-effect lifecycle validation'
     print('PASS: LUKS static support closure and bootstrap; installer was not invoked')
 else:
     with tempfile.TemporaryDirectory(prefix='standalone-owner-') as directory:
@@ -48,12 +49,13 @@ else:
         home = temporary / 'home'
         home.mkdir()
         env = dict(HOME=str(home), USER=os.environ.get('USER', 'mk'), LOGNAME=os.environ.get('USER', 'mk'), PATH=str(tools)+':/usr/bin:/bin', XDG_CONFIG_HOME=str(temporary/'config'), XDG_CACHE_HOME=str(temporary/'cache'), XDG_STATE_HOME=str(temporary/'state'), FORBIDDEN_MARKER=str(marker), TERM='xterm', LANG='C.UTF-8')
-        for arguments in (['--help'], ['--list-components']):
+        for arguments in (['--help'], ['--list-components'], ['--help', 'unexpected'], ['--list-components', 'unexpected']):
             # Task Workspaces is atomic; its component protocol is a later cycle.
             if arguments == ['--list-components'] and (root / 'src/chrome.rs').is_file():
                 continue
             result = subprocess.run(['bash', str(checkout/'install.sh'), *arguments], cwd=checkout, env=env, capture_output=True, text=True, timeout=30)
-            assert result.returncode == 0, (arguments, result.stdout, result.stderr)
+            expected_status = 2 if 'unexpected' in arguments else 0
+            assert result.returncode == expected_status, (arguments, result.returncode, result.stdout, result.stderr)
             assert not marker.exists(), marker.read_text() if marker.exists() else ''
         assert not (home / 'projects').exists(), 'Discovery created sibling checkouts'
     print('PASS: packaged licensed framework; isolated help/discovery uses no network, credentials or desktop mutations')
