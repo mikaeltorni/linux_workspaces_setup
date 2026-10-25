@@ -37,7 +37,7 @@ from pathlib import Path
 # Logging is best effort here: the helper must keep working on a bare checkout.
 for _candidate in (
     os.environ.get("ISC_FUNCTIONS_DIR", ""),
-    str(Path(__file__).resolve().parents[2] / "linux_installation_scripts_functions"),
+    str(Path(__file__).resolve().parents[1] / ".installer-support"),
 ):
     if _candidate and (Path(_candidate) / "logging_utils.py").is_file():
         sys.path.insert(0, _candidate)
