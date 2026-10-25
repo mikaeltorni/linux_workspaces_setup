@@ -11,6 +11,7 @@ support = root / '.installer-support'
 assert (support / 'bootstrap.sh').is_file(), 'Missing bundled framework bootstrap'
 manifest = json.loads((support / 'manifest.json').read_text())
 assert manifest['license'] == 'MIT'
+assert 'if cm_single_submenu "$repo"; then rc=0; else rc=$?; fi' in (support / 'component_runtime.sh').read_text(), 'Missing strict-Bash menu cancellation handling'
 assert 'Permission is hereby granted' in (support / 'LICENSE.md').read_text()
 import hashlib
 for name, expected in manifest['files'].items():

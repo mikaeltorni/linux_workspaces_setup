@@ -1013,7 +1013,7 @@ _isc_apply_request() {
             return 0
           }
           CM_CONFIGURE_CALLBACK=_isc_menu_configure_callback
-          cm_single_submenu "$repo"; rc=$?
+          if cm_single_submenu "$repo"; then rc=0; else rc=$?; fi
           if (( rc != 0 )); then
             isc_log_info "selection cancelled — nothing changed"
             msg "Selection cancelled — nothing changed."
