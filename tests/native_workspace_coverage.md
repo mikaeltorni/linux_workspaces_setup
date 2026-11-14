@@ -1,10 +1,5 @@
 # Native workspace helpers
 
-Capability queue: authoritative workflow ledger row1 at
-`/home/mk/projects/installation_scripts/tmp/workflow/6500c77863834cf58c7ec79332b5335a.md`.
-Current cycle36–38 owns app-rule write/list and lifecycle filtering; shared and
-other repository ports remain deferred.
-
 | Rule | Saved public assertion |
 | --- | --- |
 | Both dimensions, group identity/order, layout and exact JSON serialization | `merge_dimensions_and_original_serialization`, including independent expected values and original Unicode JSON fixture. |
