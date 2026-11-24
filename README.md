@@ -1,6 +1,27 @@
-# Linux Workspaces Setup
+# Linux Workspaces Setup — GNOME workspace rules and navigation
 
-> Part of [installation_scripts](https://github.com/mikaeltorni/installation_scripts) — the master installer that orchestrates a productivity-focused Ubuntu 24.04 desktop setup (workspaces, hotkeys, window tiling, programming tools, and more). Tested on Ubuntu 24.04.4 LTS (GNOME 46); other GNOME/Ubuntu versions untested.
+Linux Workspaces Setup is a GNOME workspace rules and navigation installer for users who
+want numbered workspace feedback and per-application placement.
+
+[![Last commit: 2026-11-24](docs/badges/last-commit.svg)](https://github.com/mikaeltorni/linux_workspaces_setup/commits/main) [![Commits in 30 days: 8 as of 2026-11-25](docs/badges/commit-activity.svg)](https://github.com/mikaeltorni/linux_workspaces_setup/graphs/commit-activity) [![Open issues: 0 as of 2026-11-25](docs/badges/issues.svg)](https://github.com/mikaeltorni/linux_workspaces_setup/issues)
+
+Activity snapshot from GitHub’s default branch on 2026-11-25.
+
+[Ownership](#ownership-map) · [Workspace mappings](#configure-extension-workspace-mappings) · [Component selection](#component-selection) · [Tests](#run-tests) · [MIT license](LICENSE.md)
+
+## Quick start
+
+Run in the target user's GNOME desktop session. The selected component installs the numbered-workspace popup.
+
+```bash
+bash install.sh --list-components
+bash install.sh --select workspace_popup
+bash install.sh --detect
+```
+
+The Ubuntu 24.04.5 GNOME 46 X11 workstation VM detected send-mode configuration and an active workspace popup.
+
+[Installation Scripts](https://github.com/mikaeltorni/installation_scripts) can also run this installer as part of the Ubuntu setup chain.
 
 Ubuntu GNOME workspace behavior and workspace-related extensions are owned by
 this repository. Screenshot shortcuts and numbered workspace switch/move
