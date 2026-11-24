@@ -10,19 +10,9 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-
-
-def _shared_helper(name: str) -> Path:
-    """Find the shared installer module from a live checkout or nested worktree."""
-    for parent in ROOT_DIR.parents:
-        helper = parent / "linux_installation_scripts_functions" / name
-        if helper.is_file():
-            return helper
-    return ROOT_DIR.parent / "linux_installation_scripts_functions" / name
-
-
-HELPERS = _shared_helper("installer_helpers.sh")
-HOTKEY_CAPTURE = _shared_helper("hotkey_capture.sh")
+SUPPORT = ROOT_DIR / ".installer-support"
+HELPERS = SUPPORT / "installer_helpers.sh"
+HOTKEY_CAPTURE = SUPPORT / "hotkey_capture.sh"
 
 
 def run_bash(script: str, env=None) -> subprocess.CompletedProcess[str]:

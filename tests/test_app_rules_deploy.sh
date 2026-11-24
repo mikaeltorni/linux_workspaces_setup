@@ -6,13 +6,7 @@ TARGET_HOME="$(mktemp -d)"
 trap 'rm -rf "$TARGET_HOME"' EXIT
 SCRIPT_DIR="$ROOT_DIR"
 CONFIG_DIR="$ROOT_DIR/configs"
-for candidate in "${ISC_FUNCTIONS_DIR:-}" "$ROOT_DIR/../linux_installation_scripts_functions" "$HOME/projects/linux_installation_scripts_functions"; do
-  if [ -n "$candidate" ] && [ -f "$candidate/installer_helpers.sh" ]; then
-    source "$candidate/installer_helpers.sh"
-    break
-  fi
-done
-declare -F run_as_target >/dev/null || { echo 'Set ISC_FUNCTIONS_DIR to the shared framework checkout' >&2; exit 1; }
+source "${ISC_FUNCTIONS_DIR:-$ROOT_DIR/.installer-support}/installer_helpers.sh"
 source "$ROOT_DIR/lib/workspace_setup.sh"
 # Inject desktop/process boundaries only; exercise the real file copy path.
 run_as_target() { "$@"; }
