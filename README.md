@@ -3,9 +3,9 @@
 Linux Workspaces Setup is a GNOME workspace rules and navigation installer for users who
 want numbered workspace feedback and per-application placement.
 
-[![Last commit: 2026-11-24](docs/badges/last-commit.svg)](https://github.com/mikaeltorni/linux_workspaces_setup/commits/main) [![Commits in 30 days: 8 as of 2026-11-25](docs/badges/commit-activity.svg)](https://github.com/mikaeltorni/linux_workspaces_setup/graphs/commit-activity) [![Open issues: 0 as of 2026-11-25](docs/badges/issues.svg)](https://github.com/mikaeltorni/linux_workspaces_setup/issues)
-
-Activity snapshot from GitHub’s default branch on 2026-11-25.
+[![Last commit](https://img.shields.io/github/last-commit/mikaeltorni/linux_workspaces_setup)](https://github.com/mikaeltorni/linux_workspaces_setup/commits/main)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/mikaeltorni/linux_workspaces_setup)](https://github.com/mikaeltorni/linux_workspaces_setup/graphs/commit-activity)
+[![Issues](https://img.shields.io/github/issues/mikaeltorni/linux_workspaces_setup)](https://github.com/mikaeltorni/linux_workspaces_setup/issues)
 
 [Ownership](#ownership-map) · [Workspace mappings](#configure-extension-workspace-mappings) · [Component selection](#component-selection) · [Tests](#run-tests) · [MIT license](LICENSE.md)
 
@@ -20,8 +20,6 @@ bash install.sh --detect
 ```
 
 The Ubuntu 24.04.5 GNOME 46 X11 workstation VM detected send-mode configuration and an active workspace popup.
-
-[Installation Scripts](https://github.com/mikaeltorni/installation_scripts) can also run this installer as part of the Ubuntu setup chain.
 
 Ubuntu GNOME workspace behavior and workspace-related extensions are owned by
 this repository. Screenshot shortcuts and numbered workspace switch/move
@@ -41,8 +39,7 @@ enhance it and never block installation when absent.
   (with the chosen accelerator). If that checkout is missing, the tiling action
   is skipped — the rest of the workspace setup still installs.
 
-See the full cross-repository map in
-[installation_scripts/DEPENDENCIES.md](https://github.com/mikaeltorni/installation_scripts/blob/master/DEPENDENCIES.md).
+[Ubuntu Hotkeys Setup](https://github.com/mikaeltorni/linux_hotkey_setup) manages screenshot and numbered switch shortcuts. [Linux Monitor & Window Hotkeys](https://github.com/mikaeltorni/linux_monitor_window_hotkeys) provides the send-mode extension.
 
 ## Ownership map
 
@@ -136,7 +133,7 @@ in the running session; package steps are skipped in user mode.
 ## Component selection
 
 This repository's `install.sh` participates in the shared installer
-component menu (see the [`installation_scripts`](https://github.com/mikaeltorni/installation_scripts)
+component menu (see the `installation_scripts`
 master installer). Run standalone, it offers an interactive submenu on a
 terminal; the master installer drives it non-interactively.
 
@@ -250,6 +247,28 @@ change can hide its actor.
 Programmatic app-rule placement preserves an existing all-workspaces preference,
 even for monitor-only rules and when a workspace move fails. Explicit sticky
 rules are reapplied after placement; failures are reported in the Shell journal.
+
+## GNOME workspace rules and navigation FAQ
+
+### Which component adds the numbered workspace popup?
+
+Run `bash install.sh --select workspace_popup` as the GNOME desktop user. Use `bash install.sh --detect` to check its status.
+
+### Where are rules for per-app placement stored?
+
+User rules are kept in `~/.config/app-rules/user-rules.json`. The rule manager preserves monitor rules when updating only workspace or sticky-window settings.
+
+### Does this repo choose my numbered workspace-switch shortcuts?
+
+Ubuntu Hotkeys Setup owns the numbered switch and move bindings. This repository owns the popup, app rules, and workspace-side send-mode configuration.
+
+### How do I inspect the saved sticky-app selection?
+
+Run `bash install.sh --list-selected-sticky-apps` from the checkout. The command reports the stored selection.
+
+### How do I configure workspace targeting for Super+U?
+
+Select or reconfigure `workspace_send_mode` in the installer. The monitor window hotkeys extension consumes the resulting workspace key map.
 
 ## Installer lifecycle
 
